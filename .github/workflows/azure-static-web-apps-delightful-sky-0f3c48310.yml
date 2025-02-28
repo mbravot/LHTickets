@@ -15,36 +15,20 @@ jobs:
     runs-on: ubuntu-latest
     name: Build and Deploy Job
     permissions:
-       id-token: write
-       contents: read
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v3
-        with:
-          submodules: true
-          lfs: false
-
-      - name: Install OIDC Client from Core Package
-        run: npm install @actions/core@1.6.0 @actions/http-client
-
-      - name: Get Id Token
-        uses: actions/github-script@v6
-        id: idtoken
-        with:
-           script: |
-               const coredemo = require('@actions/core')
-               return await coredemo.getIDToken()
-           result-encoding: string
-
-      - name: Build And Deploy
-        id: builddeploy
+      - name: Build Flutter Web
+        run: flutter build web  # ¡Ojo! Hacemos el build aquí para asegurarnos
+      - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_DELIGHTFUL_SKY_0F3C48310 }}
-          action: "upload"
-          app_location: "."            # ✅ CORRECTO PARA FLUTTER WEB
-          api_location: ""             # Si no tienes una API con Azure Functions, déjalo vacío
-          output_location: "build/web" # ✅ Donde Flutter genera el build web
-          github_id_token: ${{ steps.idtoken.outputs.result }}
+          action: upload
+          app_location: "build/web"   # ⚠️ Aquí se sube el build ya listo
+          api_location: ""
+          output_location: ""         # ⚠️ No necesitamos esto porque no es un proyecto que Azure deba construir
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
@@ -52,7 +36,6 @@ jobs:
     name: Close Pull Request Job
     steps:
       - name: Close Pull Request
-        id: closepullrequest
         uses: Azure/static-web-apps-deploy@v1
         with:
           action: "close"
