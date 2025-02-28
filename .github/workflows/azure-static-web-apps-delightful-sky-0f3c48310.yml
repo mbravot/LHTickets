@@ -19,16 +19,15 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v3
-      - name: Build Flutter Web
-        run: flutter build web  # ¡Ojo! Hacemos el build aquí para asegurarnos
+
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_DELIGHTFUL_SKY_0F3C48310 }}
           action: upload
-          app_location: "build/web"   # ⚠️ Aquí se sube el build ya listo
-          api_location: ""
-          output_location: ""         # ⚠️ No necesitamos esto porque no es un proyecto que Azure deba construir
+          app_location: "build/web"   # Directamente el build ya hecho
+          api_location: ""             # No tienes backend Functions
+          output_location: ""          # No se necesita
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
