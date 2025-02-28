@@ -125,7 +125,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       return;
     }
 
-    final String url = "http://192.168.1.95:5000/api/uploads/$adjunto";
+    final String url = "https://apilhtickets.onrender.com/api/uploads/$adjunto";
 
     if (await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
