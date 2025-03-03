@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   final String baseUrl =
-      'https://mi-api-flask-cqgkfebecjh0eba0.canadacentral-01.azurewebsites.net/api'; //Ruta API
+      'http://api-tickets-c2g2bpcgauebg4fb.brazilsouth-01.azurewebsites.net/api'; //Ruta API
 
   // 🔹 Obtener token guardado en SharedPreferences
   Future<String?> _getToken() async {

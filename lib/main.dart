@@ -14,7 +14,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Sistema de Tickets',
+      title: 'Sistema de Tickets La Hornilla',
       theme: ThemeData(primarySwatch: Colors.blue),
       home: AuthChecker(), // Comprobador de autenticación
     );
