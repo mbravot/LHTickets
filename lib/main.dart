@@ -26,7 +26,7 @@ class AuthChecker extends StatelessWidget {
 
   Future<bool> _isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.containsKey('token'); // Verifica si el token existe
+    return prefs.containsKey('token'); // Verifica si el token existee
   }
 
   @override
