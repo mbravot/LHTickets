@@ -86,6 +86,7 @@ class _AgentManagementScreenState extends State<AgentManagementScreen> {
         .toList();
   }
 
+  // obtener agentes
   List<dynamic> _obtenerAgentesPaginados(List<dynamic> agentes) {
     int startIndex = _currentPage * _itemsPerPage;
     int endIndex = startIndex + _itemsPerPage;
