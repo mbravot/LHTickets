@@ -126,7 +126,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     }
 
     final String url =
-        "http://api-tickets-c2g2bpcgauebg4fb.brazilsouth-01.azurewebsites.net/api/uploads/$adjunto"; //Ruta API
+        "https://api-tickets-c2g2bpcgauebg4fb.brazilsouth-01.azurewebsites.net/api/uploads/$adjunto"; //Ruta API
 
     if (await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
