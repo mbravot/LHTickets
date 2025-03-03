@@ -13,7 +13,7 @@ class ApiService {
     return prefs.getString('jwt_token');
   }
 
-  // 🔹 Iniciar sesión y guardar token
+  // 🔹 Iniciar sesión y guardar tokens
   Future<Map<String, dynamic>> login(String correo, String clave) async {
     final response = await http.post(
       Uri.parse('$baseUrl/auth/login'),
