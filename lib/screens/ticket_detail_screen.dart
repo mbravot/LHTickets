@@ -125,7 +125,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       return;
     }
 
-    final String url = "https://apilhtickets.onrender.com/api/uploads/$adjunto";
+    final String url =
+        "https://mi-api-flask-cqgkfebecjh0eba0.canadacentral-01.azurewebsites.net/api/uploads/$adjunto"; //Ruta API
 
     if (await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
