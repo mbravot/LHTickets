@@ -16,7 +16,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Sistema de Tickets La Hornilla',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: AuthChecker(), // Comprobador de autenticación
+      home: AuthChecker(), // Comprobador de autenticación 2.0
     );
   }
 }
