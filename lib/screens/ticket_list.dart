@@ -142,6 +142,10 @@ class _TicketListScreenState extends State<TicketListScreen>
   }
 
   void _filterTickets(String query) {
+    setState(() {
+      _currentPage = 0; // Reiniciar la paginación a la primera página
+    });
+
     List<dynamic> selectedList;
 
     switch (_tabController.index) {
@@ -345,6 +349,7 @@ class _TicketListScreenState extends State<TicketListScreen>
 
   void _mostrarDialogoReasignar(int ticketId, int departamentoId) async {
     try {
+      setState(() => isLoading = true);
       List agentes = await apiService.getAgentesPorDepartamento(departamentoId);
 
       if (agentes.isEmpty) {
@@ -396,6 +401,7 @@ class _TicketListScreenState extends State<TicketListScreen>
                   }
 
                   try {
+                    setState(() => isLoading = true);
                     await apiService.asignarTicket(
                         ticketId, agenteSeleccionado!);
                     Navigator.pop(context);
@@ -411,6 +417,8 @@ class _TicketListScreenState extends State<TicketListScreen>
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('❌ Error al reasignar el ticket')),
                     );
+                  } finally {
+                    setState(() => isLoading = false);
                   }
                 },
                 child: Text('Reasignar'),
@@ -424,6 +432,8 @@ class _TicketListScreenState extends State<TicketListScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('❌ Error al obtener la lista de agentes')),
       );
+    } finally {
+      setState(() => isLoading = false);
     }
   }
 
