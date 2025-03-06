@@ -23,12 +23,18 @@ class _DepartmentCreateScreenState extends State<DepartmentCreateScreen> {
       try {
         await apiService.crearDepartamento(_nombreController.text);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('✅ Departamento creado correctamente')),
+          SnackBar(
+            content: Text('✅ Departamento creado correctamente'),
+            backgroundColor: Colors.green,
+          ),
         );
         Navigator.pop(context, true); // Regresar y recargar la lista
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ Error al crear el departamento: $e')),
+          SnackBar(
+            content: Text('❌ Error al crear el departamento: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       } finally {
         setState(() {

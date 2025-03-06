@@ -57,7 +57,10 @@ class _TicketCreateScreenState extends State<TicketCreateScreen> {
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al cargar los datos: $e')),
+        SnackBar(
+          content: Text('Error al cargar los datos: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
       setState(() {
         _isFetchingData = false;
@@ -75,11 +78,17 @@ class _TicketCreateScreenState extends State<TicketCreateScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('📂 Archivo seleccionado: $_nombreArchivo')),
+        SnackBar(
+          content: Text('📂 Archivo seleccionado: $_nombreArchivo'),
+          backgroundColor: Colors.green,
+        ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ No se seleccionó ningún archivo')),
+        SnackBar(
+          content: Text('❌ No se seleccionó ningún archivo'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -133,7 +142,10 @@ class _TicketCreateScreenState extends State<TicketCreateScreen> {
         }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ Error: $e')),
+          SnackBar(
+            content: Text('❌ Error: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       } finally {
         setState(() {
@@ -142,133 +154,171 @@ class _TicketCreateScreenState extends State<TicketCreateScreen> {
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('⚠️ Por favor completa todos los campos')),
+        SnackBar(
+          content: Text('⚠️ Por favor completa todos los campos'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
+    const primaryColor = Colors.green;
+    const secondaryColor = Colors.white;
+
+    if (_isFetchingData) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Crear Nuevo Ticket',
+              style: TextStyle(color: secondaryColor)),
+          backgroundColor: primaryColor,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(title: Text('Crear Nuevo Ticket')),
-      body: _isFetchingData
-          ? Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  children: [
-                    Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Column(
-                          children: [
-                            TextFormField(
-                              controller: _tituloController,
-                              decoration: InputDecoration(labelText: 'Título'),
-                              validator: (value) => value!.isEmpty
-                                  ? 'Por favor ingresa un título'
-                                  : null,
-                            ),
-                            TextFormField(
-                              controller: _descripcionController,
-                              decoration:
-                                  InputDecoration(labelText: 'Descripción'),
-                              maxLines: 3,
-                              validator: (value) => value!.isEmpty
-                                  ? 'Por favor ingresa una descripción'
-                                  : null,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 16.0),
-                    Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Column(
-                          children: [
-                            DropdownButtonFormField<int>(
-                              value: _departamento,
-                              decoration:
-                                  InputDecoration(labelText: 'Departamento'),
-                              items: departamentos.map((departamento) {
-                                return DropdownMenuItem<int>(
-                                  value: departamento['id'],
-                                  child: Text(departamento['nombre']),
-                                );
-                              }).toList(),
-                              onChanged: (value) =>
-                                  setState(() => _departamento = value),
-                              validator: (value) => value == null
-                                  ? 'Por favor selecciona un departamento'
-                                  : null,
-                            ),
-                            DropdownButtonFormField<int>(
-                              value: _prioridad,
-                              decoration:
-                                  InputDecoration(labelText: 'Prioridad'),
-                              items: prioridades.map((prioridad) {
-                                return DropdownMenuItem<int>(
-                                  value: prioridad['id'],
-                                  child: Text(prioridad['nombre']),
-                                );
-                              }).toList(),
-                              onChanged: (value) =>
-                                  setState(() => _prioridad = value),
-                              validator: (value) => value == null
-                                  ? 'Por favor selecciona una prioridad'
-                                  : null,
-                            ),
-                            TextFormField(
-                              initialValue: "Abierto", // Mostrar el estado fijo
-                              decoration: InputDecoration(labelText: 'Estado'),
-                              enabled: false, // Bloquea la edición
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 16.0),
-                    Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Column(
-                          children: [
-                            ElevatedButton.icon(
-                              onPressed: _seleccionarArchivo,
-                              icon: Icon(Icons.attach_file),
-                              label: Text('Adjuntar Archivo'),
-                            ),
-                            if (_nombreArchivo != null)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 8.0),
-                                child: Text('📂 $_nombreArchivo',
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.bold)),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                    _isLoading
-                        ? Center(child: CircularProgressIndicator())
-                        : ElevatedButton(
-                            onPressed: _submitForm,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green, // 🔹 Fondo verde
-                              foregroundColor: Colors.white, // 🔹 Texto blanco
-                            ),
-                            child: Text('Crear Ticket'),
-                          ),
-                  ],
+      appBar: AppBar(
+        title: const Text('Crear Nuevo Ticket',
+            style: TextStyle(color: secondaryColor)),
+        backgroundColor: primaryColor,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            children: [
+              _buildCard([
+                _buildTextField(_tituloController, 'Título', Icons.title),
+                const SizedBox(height: 12),
+                _buildTextField(
+                    _descripcionController, 'Descripción', Icons.description,
+                    maxLines: 3),
+              ]),
+              const SizedBox(height: 16),
+              _buildCard([
+                _buildDropdown(
+                  label: 'Departamento',
+                  value: _departamento,
+                  items: departamentos,
+                  icon: Icons.business,
+                  onChanged: (v) => setState(() => _departamento = v),
                 ),
-              ),
-            ),
+                const SizedBox(height: 12),
+                _buildDropdown(
+                  label: 'Prioridad',
+                  value: _prioridad,
+                  items: prioridades,
+                  icon: Icons.flag,
+                  onChanged: (v) => setState(() => _prioridad = v),
+                ),
+                const SizedBox(height: 12),
+                _buildReadonlyField('Estado', 'Abierto', Icons.info),
+              ]),
+              const SizedBox(height: 16),
+              _buildCard([
+                ElevatedButton.icon(
+                  onPressed: _seleccionarArchivo,
+                  icon: const Icon(Icons.attach_file),
+                  label: const Text('Adjuntar Archivo'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    foregroundColor: secondaryColor,
+                  ),
+                ),
+                if (_nombreArchivo != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text('📂 $_nombreArchivo',
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+              ]),
+              const SizedBox(height: 24),
+              _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ElevatedButton(
+                      onPressed: _submitForm,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColor,
+                        foregroundColor: secondaryColor,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: const Text('Crear Ticket',
+                          style: TextStyle(fontSize: 16)),
+                    ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCard(List<Widget> children) {
+    return Card(
+      color: Colors.grey[100],
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start, children: children),
+      ),
+    );
+  }
+
+  Widget _buildTextField(
+      TextEditingController controller, String label, IconData icon,
+      {int maxLines = 1}) {
+    return TextFormField(
+      controller: controller,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      validator: (v) => v == null || v.isEmpty ? 'Campo requerido' : null,
+    );
+  }
+
+  Widget _buildDropdown({
+    required String label,
+    required int? value,
+    required List<dynamic> items,
+    required IconData icon,
+    required ValueChanged<int?> onChanged,
+  }) {
+    return DropdownButtonFormField<int>(
+      value: value,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      items: items.map<DropdownMenuItem<int>>((item) {
+        return DropdownMenuItem<int>(
+          value: item['id'],
+          child: Text(item['nombre']),
+        );
+      }).toList(),
+      onChanged: onChanged,
+      validator: (v) => v == null ? 'Selecciona una opción' : null,
+    );
+  }
+
+  Widget _buildReadonlyField(String label, String value, IconData icon) {
+    return TextFormField(
+      initialValue: value,
+      enabled: false,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      style: const TextStyle(color: Colors.grey),
     );
   }
 }

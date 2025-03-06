@@ -3,8 +3,15 @@ import 'screens/ticket_list.dart';
 import 'screens/login_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await _clearSessionOnStartup();
   runApp(MyApp());
+}
+
+Future<void> _clearSessionOnStartup() async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.remove('token'); // Elimina el token al iniciar
 }
 
 class MyApp extends StatelessWidget {

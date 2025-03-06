@@ -45,7 +45,10 @@ class _TicketCommentsScreenState extends State<TicketCommentsScreen> {
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al agregar comentario: $e')),
+        SnackBar(
+          content: Text('Error al agregar comentario: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       setState(() {

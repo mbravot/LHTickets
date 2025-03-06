@@ -92,7 +92,10 @@ class _UserEditScreenState extends State<UserEditScreen> {
 
     if (updatedData.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("No hay cambios para actualizar")),
+        SnackBar(
+          content: Text("No hay cambios para actualizar"),
+          backgroundColor: Colors.lightBlue,
+        ),
       );
       return;
     }
@@ -100,12 +103,18 @@ class _UserEditScreenState extends State<UserEditScreen> {
     try {
       await apiService.updateUser(widget.user['id'], updatedData);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('✅ Usuario actualizado exitosamente')),
+        SnackBar(
+          content: Text('✅ Usuario actualizado exitosamente'),
+          backgroundColor: Colors.green,
+        ),
       );
       Navigator.pop(context, true);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Error: $e')),
+        SnackBar(
+          content: Text('❌ Error: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       setState(() => _isLoading = false);
@@ -136,12 +145,18 @@ class _UserEditScreenState extends State<UserEditScreen> {
       try {
         await apiService.deleteUser(widget.user['id']);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('✅ Usuario eliminado correctamente')),
+          SnackBar(
+            content: Text('✅ Usuario eliminado correctamente'),
+            backgroundColor: Colors.green,
+          ),
         );
         Navigator.pop(context, true);
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ Error al eliminar usuario')),
+          SnackBar(
+            content: Text('❌ Error al eliminar usuario'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }

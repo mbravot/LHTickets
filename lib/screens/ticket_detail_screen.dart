@@ -40,7 +40,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Error al agregar comentario: $e')),
+        SnackBar(
+          content: Text('❌ Error al agregar comentario: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -57,6 +60,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
           backgroundColor: Colors.green,
         ),
       );
+      Navigator.pop(context, true); // <- Esto le avisa a la lista que refresque
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -89,7 +93,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
           context, true); // Devuelve `true` para indicar que se cerró el ticket
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Error al cerrar el ticket: $e')),
+        SnackBar(
+          content: Text('❌ Error al cerrar el ticket: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -120,7 +127,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   void _abrirAdjunto(String adjunto) async {
     if (adjunto.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('❌ No hay archivo adjunto')),
+        const SnackBar(
+          content: Text('❌ No hay archivo adjunto'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -132,7 +142,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('❌ No se pudo abrir el archivo adjunto')),
+        const SnackBar(
+          content: Text('❌ No se pudo abrir el archivo adjunto'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -203,8 +216,13 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
             const SizedBox(height: 16.0),
 
             // 🔹 Sección de comentarios
-            const Text("Comentarios:",
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              "Comentarios:",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
             FutureBuilder<List<dynamic>>(
               future: comentarios,
               builder: (context, snapshot) {
@@ -223,7 +241,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                     return ListTile(
                       title: Text(
                           "${comentario['usuario']} (${comentario['creado']})"),
-                      subtitle: Text(comentario['comentario']),
+                      subtitle: Text(
+                        comentario['comentario'],
+                        style: const TextStyle(color: Colors.green),
+                      ),
                     );
                   }).toList(),
                 );
@@ -259,7 +280,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                     onPressed: () =>
                         _cambiarEstadoTicket(ticket['id'], "En Proceso"),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.lightBlue,
+                      backgroundColor: Colors.orange,
                       foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(
                           vertical: 16), // Aumentar el padding vertical

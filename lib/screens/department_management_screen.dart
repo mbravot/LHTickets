@@ -89,12 +89,18 @@ class _DepartmentManagementScreenState
       try {
         await apiService.eliminarDepartamento(id);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('✅ Departamento eliminado correctamente')),
+          SnackBar(
+            content: Text('✅ Departamento eliminado correctamente'),
+            backgroundColor: Colors.green,
+          ),
         );
         _loadDepartamentos(); // Recargar la lista
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ Error al eliminar el departamento: $e')),
+          SnackBar(
+            content: Text('❌ Error al eliminar el departamento: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }

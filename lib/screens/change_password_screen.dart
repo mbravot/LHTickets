@@ -28,7 +28,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
     if (userId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: Usuario no autenticado')),
+        SnackBar(
+          content: Text('Error: Usuario no autenticado'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -41,12 +44,18 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('✅ Clave actualizada con éxito')),
+        SnackBar(
+          content: Text('✅ Clave actualizada con éxito'),
+          backgroundColor: Colors.green,
+        ),
       );
       Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Error: $e')),
+        SnackBar(
+          content: Text('❌ Error: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       setState(() {

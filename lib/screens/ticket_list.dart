@@ -201,12 +201,18 @@ class _TicketListScreenState extends State<TicketListScreen>
       try {
         await apiService.deleteTicket(ticketId);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('✅ Ticket eliminado correctamente')),
+          SnackBar(
+            content: Text('✅ Ticket eliminado correctamente'),
+            backgroundColor: Colors.green,
+          ),
         );
         _refreshTickets();
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ Error al eliminar el ticket: $e')),
+          SnackBar(
+            content: Text('❌ Error al eliminar el ticket: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -287,7 +293,10 @@ class _TicketListScreenState extends State<TicketListScreen>
 
       if (agentes.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No hay agentes disponibles')),
+          SnackBar(
+            content: Text('No hay agentes disponibles'),
+            backgroundColor: Colors.red,
+          ),
         );
         return;
       }
@@ -342,7 +351,10 @@ class _TicketListScreenState extends State<TicketListScreen>
     } catch (e) {
       print("❌ Error al obtener agentes: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al obtener la lista de agentes')),
+        SnackBar(
+          content: Text('Error al obtener la lista de agentes'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -354,7 +366,10 @@ class _TicketListScreenState extends State<TicketListScreen>
 
       if (agentes.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ No hay agentes en este departamento')),
+          SnackBar(
+            content: Text('❌ No hay agentes en este departamento'),
+            backgroundColor: Colors.red,
+          ),
         );
         return;
       }
@@ -395,7 +410,10 @@ class _TicketListScreenState extends State<TicketListScreen>
                 onPressed: () async {
                   if (agenteSeleccionado == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('❌ Debes seleccionar un agente')),
+                      SnackBar(
+                        content: Text('❌ Debes seleccionar un agente'),
+                        backgroundColor: Colors.red,
+                      ),
                     );
                     return;
                   }
@@ -415,7 +433,10 @@ class _TicketListScreenState extends State<TicketListScreen>
                   } catch (e) {
                     print("❌ Error al reasignar ticket: $e");
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('❌ Error al reasignar el ticket')),
+                      SnackBar(
+                        content: Text('❌ Error al reasignar el ticket'),
+                        backgroundColor: Colors.red,
+                      ),
                     );
                   } finally {
                     setState(() => isLoading = false);
@@ -430,7 +451,10 @@ class _TicketListScreenState extends State<TicketListScreen>
     } catch (e) {
       print("❌ Error en _mostrarDialogoReasignar: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Error al obtener la lista de agentes')),
+        SnackBar(
+          content: Text('❌ Error al obtener la lista de agentes'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       setState(() => isLoading = false);
@@ -447,18 +471,27 @@ class _TicketListScreenState extends State<TicketListScreen>
       try {
         await apiService.subirArchivo(archivoBytes, fileName, ticketId);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('📂 Archivo adjuntado correctamente')),
+          SnackBar(
+            content: Text('📂 Archivo adjuntado correctamente'),
+            backgroundColor: Colors.green,
+          ),
         );
         _refreshTickets();
       } catch (e) {
         print("❌ Error al subir archivo: $e");
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ Error al subir el archivo')),
+          SnackBar(
+            content: Text('❌ Error al subir el archivo'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se seleccionó ningún archivo')),
+        SnackBar(
+          content: Text('No se seleccionó ningún archivo'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -511,7 +544,22 @@ class _TicketListScreenState extends State<TicketListScreen>
             itemCount: paginatedTickets.length,
             itemBuilder: (context, index) {
               final ticket = paginatedTickets[index];
+
+              Color getCardColor(String estado) {
+                switch (estado) {
+                  case 'Abierto':
+                    return Colors.green.shade100; // Verde suave
+                  case 'En Proceso':
+                    return Colors.orange.shade100; // Naranja suave
+                  case 'Cerrado':
+                    return Colors.red.shade100; // Rojo suave
+                  default:
+                    return Colors.grey.shade200; // Por defecto gris claro
+                }
+              }
+
               return Card(
+                color: getCardColor(ticket['estado'] ?? ''),
                 margin: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                 elevation: 2,
                 shape: RoundedRectangleBorder(
@@ -536,7 +584,6 @@ class _TicketListScreenState extends State<TicketListScreen>
                   isThreeLine: true,
                   trailing: _buildPopupMenu(ticket),
                   onTap: () async {
-                    // 🔹 Esperar el resultado de la pantalla de detalle
                     final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -544,7 +591,6 @@ class _TicketListScreenState extends State<TicketListScreen>
                             TicketDetailScreen(ticket: ticket),
                       ),
                     );
-                    // 🔹 Si el resultado es `true`, actualizar la lista de tickets
                     if (result == true) {
                       _refreshTickets();
                     }

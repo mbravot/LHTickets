@@ -38,12 +38,18 @@ class _AgentManagementScreenState extends State<AgentManagementScreen> {
     try {
       await apiService.asignarDepartamento(agenteId, departamentoId);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Departamento asignado correctamente')),
+        SnackBar(
+          content: Text('Departamento asignado correctamente'),
+          backgroundColor: Colors.green,
+        ),
       );
       _loadData(); // Recargar la lista de agentes
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }

@@ -68,13 +68,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Usuario registrado exitosamente')),
+          SnackBar(
+            content: Text('Usuario registrado exitosamente'),
+            backgroundColor: Colors.green,
+          ),
         );
 
         Navigator.pop(context);
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       } finally {
         setState(() => _isLoading = false);
@@ -87,6 +93,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (widget.userRole != "1") {
       return Scaffold(
         body: Center(child: Text("Acceso denegado")),
+        backgroundColor: Colors.red,
       );
     }
 

@@ -26,23 +26,26 @@ class _TicketEditScreenState extends State<TicketEditScreen> {
 
   void _updateTicket() async {
     if (_formKey.currentState!.validate()) {
-      Map<String, dynamic> updatedTicket = {
-        'titulo': _tituloController.text,
-        'descripcion': _descripcionController.text,
-        'id_estado': widget.ticket['id_estado'],
-        'id_prioridad': widget.ticket['id_prioridad'],
-        'id_departamento': widget.ticket['id_departamento'],
+      final Map<String, dynamic> updatedTicket = {
+        'titulo': _tituloController.text.trim(),
+        'descripcion': _descripcionController.text.trim(),
       };
 
       try {
         await apiService.updateTicket(widget.ticket['id'], updatedTicket);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ticket actualizado con éxito')),
+          const SnackBar(
+            content: Text('Ticket actualizado con éxito'),
+            backgroundColor: Colors.green,
+          ),
         );
-        Navigator.pop(context, true); // Devuelve true para refrescar la lista
+        Navigator.pop(context, true); // Refresca la lista al volver
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(
+            content: Text('Error al actualizar el ticket: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
