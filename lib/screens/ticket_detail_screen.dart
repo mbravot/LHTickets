@@ -12,16 +12,54 @@ class TicketDetailScreen extends StatefulWidget {
   _TicketDetailScreenState createState() => _TicketDetailScreenState();
 }
 
-class _TicketDetailScreenState extends State<TicketDetailScreen> {
+class _TicketDetailScreenState extends State<TicketDetailScreen>
+    with SingleTickerProviderStateMixin {
   late Map<String, dynamic> ticket;
   late Future<List<dynamic>> comentarios;
   final TextEditingController _comentarioController = TextEditingController();
+
+  // Animación
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
+  // Colores y estilos
+  final Color primaryColor = Colors.green;
+  final Color secondaryColor = Colors.white;
+  final Color backgroundColor = Colors.grey[100]!;
+  final TextStyle cardTitleStyle = TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.bold,
+    color: Colors.grey[800],
+  );
+  final TextStyle cardSubtitleStyle = TextStyle(
+    fontSize: 14,
+    color: Colors.grey[600],
+  );
 
   @override
   void initState() {
     super.initState();
     ticket = widget.ticket;
     comentarios = _cargarComentarios();
+
+    // Inicializar animación
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeIn,
+      ),
+    );
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<List<dynamic>> _cargarComentarios() async {
@@ -32,12 +70,34 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     if (_comentarioController.text.isEmpty) return;
 
     try {
+      // Agregar el comentario
       await widget.apiService
           .agregarComentario(ticket['id'], _comentarioController.text);
+
+      // Cambiar el estado del ticket a "En Proceso"
+      await widget.apiService.cambiarEstadoTicket(ticket['id'], "En Proceso");
+
+      // Actualizar el estado localmente
+      setState(() {
+        ticket['estado'] = "En Proceso";
+      });
+
       _comentarioController.clear();
       setState(() {
         comentarios = _cargarComentarios(); // Recargar comentarios
       });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text('✅ Comentario agregado y ticket actualizado a "En Proceso"'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      // No cerrar la pantalla, solo actualizar el estado local
+      // Cuando el usuario regrese a la lista de tickets, se actualizará automáticamente
+      // porque el ticket ha sido modificado
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -136,7 +196,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     }
 
     final String url =
-        "https://api-tickets-c2g2bpcgauebg4fb.brazilsouth-01.azurewebsites.net/api/uploads/$adjunto"; //Ruta API
+        "https://apilhtickets.onrender.com/api/uploads/$adjunto"; //Ruta API
 
     if (await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
@@ -150,212 +210,470 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     }
   }
 
+  Color _getStatusColor(String estado) {
+    switch (estado) {
+      case 'Abierto':
+        return Colors.green;
+      case 'En Proceso':
+        return Colors.orange;
+      case 'Cerrado':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Detalle del Ticket'),
-        backgroundColor: Colors.green, // Fondo verde
-        foregroundColor: Colors.white, // Texto blanco
+        title: Text(
+          'Detalle del Ticket',
+          style: TextStyle(
+            color: secondaryColor,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: primaryColor,
+        elevation: 4,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: secondaryColor),
+          onPressed: () {
+            // Notificar a la pantalla anterior que el ticket fue actualizado
+            Navigator.pop(context, true);
+          },
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh, color: secondaryColor),
+            onPressed: () {
+              setState(() {
+                comentarios = _cargarComentarios();
+              });
+            },
+            tooltip: 'Actualizar comentarios',
+          ),
+        ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: _buildInfoTable([
-                    ["Creado", ticket['usuario']],
-                    ["Agente Asignado", ticket['agente'] ?? 'Sin asignar'],
-                    ["Prioridad", ticket['prioridad']],
-                    ["Título", ticket['titulo']],
-                  ]),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Tarjeta de estado
+              Card(
+                elevation: 4,
+                shadowColor: Colors.black26,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildInfoTable([
-                    ["Fecha Creación", ticket['creado']],
-                    ["Departamento", ticket['departamento']],
-                    ["Estado", ticket['estado']],
-                  ]),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16.0),
-
-            // Descripción
-            const Text("Descripción:",
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[300]!),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(ticket['descripcion']),
-            ),
-
-            const SizedBox(height: 16.0),
-
-            // Adjuntos
-            if (ticket['adjunto'] != null && ticket['adjunto'].isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: InkWell(
-                  onTap: () => _abrirAdjunto(ticket['adjunto']),
-                  child: const Text(
-                    "📎 Ver adjunto",
-                    style: TextStyle(
-                        color: Colors.blue,
-                        decoration: TextDecoration.underline),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        _getStatusColor(ticket['estado']),
+                        _getStatusColor(ticket['estado']).withOpacity(0.7),
+                      ],
+                    ),
                   ),
-                ),
-              ),
-
-            const SizedBox(height: 16.0),
-
-            // 🔹 Sección de comentarios
-            const Text(
-              "Comentarios:",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
-            FutureBuilder<List<dynamic>>(
-              future: comentarios,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return const Text("❌ Error al cargar comentarios");
-                }
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Text("No hay comentarios.");
-                }
-
-                return Column(
-                  children: snapshot.data!.map((comentario) {
-                    return ListTile(
-                      title: Text(
-                          "${comentario['usuario']} (${comentario['creado']})"),
-                      subtitle: Text(
-                        comentario['comentario'],
-                        style: const TextStyle(color: Colors.green),
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Icon(
+                        ticket['estado'] == 'Abierto'
+                            ? Icons.check_circle
+                            : ticket['estado'] == 'En Proceso'
+                                ? Icons.pending
+                                : Icons.cancel,
+                        color: Colors.white,
+                        size: 32,
                       ),
-                    );
-                  }).toList(),
-                );
-              },
-            ),
-
-            // Campo para agregar comentarios
-            const SizedBox(height: 10),
-            TextField(
-              controller: _comentarioController,
-              decoration: InputDecoration(
-                hintText: "Escribe un comentario...",
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.send, color: Colors.green),
-                  onPressed: _agregarComentario, // Enviar al presionar el ícono
-                ),
-              ),
-              onSubmitted: (value) {
-                _agregarComentario(); // Enviar al presionar Enter
-              },
-            ),
-
-            // 🔹 Espacio entre el campo de comentarios y los botones
-            const SizedBox(height: 20),
-
-            // 🔹 Botón para cambiar estado (solo si el ticket está en "Abierto")
-
-            if (ticket['estado'] == "Abierto")
-              Center(
-                child: SizedBox(
-                  width: double.infinity, // Ocupa todo el ancho disponible
-                  child: ElevatedButton(
-                    onPressed: () =>
-                        _cambiarEstadoTicket(ticket['id'], "En Proceso"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(
-                          vertical: 16), // Aumentar el padding vertical
-                    ),
-                    child: const Text("En Proceso"),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Estado: ${ticket['estado']}',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'ID: #${ticket['id']}',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
 
-            // 🔹 Botón para cerrar ticket (solo si el estado es "En Proceso")
-            if (ticket['estado'] == "En Proceso")
-              Center(
-                child: SizedBox(
-                  width: double.infinity, // Ocupa todo el ancho disponible
-                  child: ElevatedButton(
-                    onPressed: _cerrarTicket, // 🔹 Cambia esto
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(
-                          vertical: 16), // Aumentar el padding vertical
-                    ),
-                    child: const Text("Cerrar Ticket"),
+              const SizedBox(height: 16),
+
+              // Información del ticket
+              Card(
+                elevation: 4,
+                shadowColor: Colors.black26,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.info_outline, color: primaryColor),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Información del Ticket',
+                            style: cardTitleStyle,
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 24),
+                      _buildInfoRow(
+                          Icons.person, "Creado por", ticket['usuario']),
+                      _buildInfoRow(Icons.support_agent, "Agente",
+                          ticket['agente'] ?? 'Sin asignar'),
+                      _buildInfoRow(
+                          Icons.flag, "Prioridad", ticket['prioridad']),
+                      _buildInfoRow(Icons.business, "Departamento",
+                          ticket['departamento']),
+                      _buildInfoRow(
+                          Icons.calendar_today, "Fecha", ticket['creado']),
+                    ],
                   ),
                 ),
               ),
-          ],
+
+              const SizedBox(height: 16),
+
+              // Descripción
+              Card(
+                elevation: 4,
+                shadowColor: Colors.black26,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.description, color: primaryColor),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Descripción',
+                            style: cardTitleStyle,
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 24),
+                      Text(
+                        ticket['descripcion'],
+                        style: cardSubtitleStyle,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Adjuntos
+              if (ticket['adjunto'] != null && ticket['adjunto'].isNotEmpty)
+                Card(
+                  elevation: 4,
+                  shadowColor: Colors.black26,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: InkWell(
+                    onTap: () => _abrirAdjunto(ticket['adjunto']),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Icon(Icons.attach_file, color: primaryColor),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Archivo Adjunto',
+                                  style: cardTitleStyle,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Toca para abrir',
+                                  style: TextStyle(
+                                    color: Colors.blue,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.open_in_new, color: Colors.blue),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+              const SizedBox(height: 16),
+
+              // Comentarios
+              Card(
+                elevation: 4,
+                shadowColor: Colors.black26,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.comment, color: primaryColor),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Comentarios',
+                            style: cardTitleStyle,
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 24),
+                      FutureBuilder<List<dynamic>>(
+                        future: comentarios,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      primaryColor),
+                                ),
+                              ),
+                            );
+                          }
+                          if (snapshot.hasError) {
+                            return Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Text(
+                                  "❌ Error al cargar comentarios",
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+                            );
+                          }
+                          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                            return Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Text(
+                                  "No hay comentarios aún.",
+                                  style: TextStyle(color: Colors.grey[600]),
+                                ),
+                              ),
+                            );
+                          }
+
+                          return Column(
+                            children: snapshot.data!.map((comentario) {
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.grey[300]!),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        CircleAvatar(
+                                          backgroundColor: primaryColor,
+                                          radius: 16,
+                                          child: Text(
+                                            comentario['usuario'][0]
+                                                .toUpperCase(),
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                comentario['usuario'],
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.grey[800],
+                                                ),
+                                              ),
+                                              Text(
+                                                comentario['creado'],
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey[600],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      comentario['comentario'],
+                                      style: TextStyle(
+                                        color: Colors.grey[800],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          );
+                        },
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Campo para agregar comentarios
+                      TextField(
+                        controller: _comentarioController,
+                        decoration: InputDecoration(
+                          hintText: "Escribe un comentario...",
+                          filled: true,
+                          fillColor: Colors.grey[100],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide:
+                                BorderSide(color: primaryColor, width: 2),
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(Icons.send, color: primaryColor),
+                            onPressed: _agregarComentario,
+                            tooltip: 'Enviar comentario',
+                          ),
+                        ),
+                        onSubmitted: (value) {
+                          _agregarComentario();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Botones de acción
+              if (ticket['estado'] == "Abierto")
+                ElevatedButton.icon(
+                  onPressed: () =>
+                      _cambiarEstadoTicket(ticket['id'], "En Proceso"),
+                  icon: Icon(Icons.pending),
+                  label: Text("Cambiar a En Proceso"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: 4,
+                  ),
+                ),
+
+              if (ticket['estado'] == "En Proceso")
+                ElevatedButton.icon(
+                  onPressed: _cerrarTicket,
+                  icon: Icon(Icons.check_circle),
+                  label: Text("Cerrar Ticket"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: 4,
+                  ),
+                ),
+
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildInfoTable(List<List<String>> data) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white, // Fondo blanco
-        borderRadius: BorderRadius.circular(8), // Bordes redondeados
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: Offset(0, 2),
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Colors.grey[600]),
+          const SizedBox(width: 8),
+          Text(
+            "$label: ",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[800],
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                color: Colors.grey[800],
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
-      ),
-      child: Table(
-        border: TableBorder.symmetric(
-          inside: BorderSide(color: Colors.grey[300]!),
-          outside: BorderSide.none,
-        ),
-        columnWidths: const {0: FlexColumnWidth(1), 1: FlexColumnWidth(2)},
-        children: data.map((row) {
-          return TableRow(
-            decoration: BoxDecoration(
-              color: row == data.first
-                  ? Colors.white.withOpacity(0.1)
-                  : null, // Fondo verde claro para la primera fila
-            ),
-            children: row.map((cell) {
-              return Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Text(
-                  cell,
-                  style: TextStyle(
-                    fontWeight:
-                        row.first == cell ? FontWeight.bold : FontWeight.normal,
-                    color: row.first == cell
-                        ? Colors.green
-                        : Colors.black, // Texto verde para las cabeceras
-                  ),
-                ),
-              );
-            }).toList(),
-          );
-        }).toList(),
       ),
     );
   }

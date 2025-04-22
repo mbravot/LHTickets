@@ -4,8 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  final String baseUrl =
-      'https://api-tickets-c2g2bpcgauebg4fb.brazilsouth-01.azurewebsites.net/api'; //Ruta API
+  final String baseUrl = 'https://apilhtickets.onrender.com/api'; //Ruta API
 
   // 🔹 Obtener token guardado en SharedPreferences
   Future<String?> _getToken() async {
@@ -25,6 +24,29 @@ class ApiService {
       return jsonDecode(response.body); // ✅ Retornar los datos correctamente
     } else {
       throw Exception('Error en el login: ${response.body}');
+    }
+  }
+
+  // 🔹 Renovar token JWT
+  Future<String> refreshToken(String currentToken) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/refresh'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $currentToken',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['access_token'];
+      } else {
+        throw Exception('Error al renovar el token: ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error en refreshToken: $e');
+      throw Exception('Error al renovar el token: $e');
     }
   }
 
@@ -662,6 +684,25 @@ class ApiService {
 
     if (response.statusCode != 200) {
       throw Exception('Error al reasignar el ticket');
+    }
+  }
+
+  // Método para crear un nuevo usuario
+  Future<void> createUser(Map<String, dynamic> userData) async {
+    String? token = await _getToken();
+    if (token == null) throw Exception('Token no encontrado');
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/usuarios'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: json.encode(userData),
+    );
+
+    if (response.statusCode != 201) {
+      throw Exception('Error al crear el usuario: ${response.body}');
     }
   }
 }

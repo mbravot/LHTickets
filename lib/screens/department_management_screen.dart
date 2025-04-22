@@ -10,26 +10,78 @@ class DepartmentManagementScreen extends StatefulWidget {
       _DepartmentManagementScreenState();
 }
 
-class _DepartmentManagementScreenState
-    extends State<DepartmentManagementScreen> {
+class _DepartmentManagementScreenState extends State<DepartmentManagementScreen>
+    with SingleTickerProviderStateMixin {
   final ApiService apiService = ApiService();
   List<dynamic> departamentos = [];
   bool _isLoading = false;
   TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   int _currentPage = 0;
-  final int _itemsPerPage = 10; // Número de departamentos por página
+  final int _itemsPerPage = 10;
+
+  // Animación
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
+  // Colores y estilos
+  final Color primaryColor = Colors.green;
+  final Color secondaryColor = Colors.white;
+  final Color backgroundColor = Colors.grey[100]!;
+  final TextStyle cardTitleStyle = TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.bold,
+    color: Colors.grey[800],
+  );
+  final TextStyle cardSubtitleStyle = TextStyle(
+    fontSize: 14,
+    color: Colors.grey[600],
+  );
 
   @override
   void initState() {
     super.initState();
     _loadDepartamentos();
+
+    // Inicializar animación
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeIn,
+      ),
+    );
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _loadDepartamentos() async {
     try {
       setState(() => _isLoading = true);
       final deptos = await apiService.getDepartamentos();
+
+      // Obtener agentes para cada departamento
+      for (var depto in deptos) {
+        try {
+          final agentes =
+              await apiService.getAgentesPorDepartamento(depto['id']);
+          depto['agentes'] = agentes;
+        } catch (e) {
+          print(
+              "❌ Error al cargar agentes del departamento ${depto['id']}: $e");
+          depto['agentes'] = [];
+        }
+      }
+
       setState(() {
         departamentos = deptos;
         _isLoading = false;
@@ -37,6 +89,12 @@ class _DepartmentManagementScreenState
     } catch (e) {
       setState(() => _isLoading = false);
       print("❌ Error al cargar departamentos: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error al cargar los departamentos'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -59,51 +117,141 @@ class _DepartmentManagementScreenState
     return departamentos.sublist(startIndex, endIndex);
   }
 
-  bool _hayMasPaginas(List<dynamic> departamentosFiltrados) {
-    int startIndex = (_currentPage + 1) * _itemsPerPage;
-    return startIndex < departamentosFiltrados.length;
+  Widget _buildDepartmentCard(dynamic departamento) {
+    return Card(
+      elevation: 4,
+      shadowColor: Colors.black26,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: primaryColor.withOpacity(0.1),
+                  child: Icon(
+                    Icons.business,
+                    color: primaryColor,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        departamento['nombre'],
+                        style: cardTitleStyle,
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.edit, color: primaryColor),
+                  onPressed: () {
+                    // TODO: Implementar edición de departamento
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('🚧 Función en desarrollo'),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                  },
+                  tooltip: 'Editar departamento',
+                ),
+                IconButton(
+                  icon: Icon(Icons.delete, color: Colors.red),
+                  onPressed: () {
+                    // TODO: Implementar eliminación de departamento
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('🚧 Función en desarrollo'),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                  },
+                  tooltip: 'Eliminar departamento',
+                ),
+              ],
+            ),
+            SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.people, size: 16, color: Colors.grey[600]),
+                SizedBox(width: 8),
+                Text(
+                  "Agentes: ${departamento['agentes']?.length ?? 0}",
+                  style: cardSubtitleStyle,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  void _eliminarDepartamento(int id) async {
-    bool confirmar = await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text('Confirmar eliminación'),
-            content:
-                Text('¿Estás seguro de que deseas eliminar este departamento?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: Text('Cancelar'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: Text('Eliminar', style: TextStyle(color: Colors.red)),
-              ),
-            ],
-          ),
-        ) ??
-        false;
+  Widget _buildPaginationControls(int totalItems) {
+    int totalPages = (totalItems / _itemsPerPage).ceil();
 
-    if (confirmar) {
-      try {
-        await apiService.eliminarDepartamento(id);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('✅ Departamento eliminado correctamente'),
-            backgroundColor: Colors.green,
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ElevatedButton.icon(
+            icon: Icon(Icons.arrow_back),
+            label: Text('Anterior'),
+            onPressed: _currentPage > 0
+                ? () {
+                    setState(() {
+                      _currentPage--;
+                    });
+                  }
+                : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
           ),
-        );
-        _loadDepartamentos(); // Recargar la lista
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error al eliminar el departamento: $e'),
-            backgroundColor: Colors.red,
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              "Página ${_currentPage + 1} de $totalPages",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
-        );
-      }
-    }
+          ElevatedButton.icon(
+            icon: Icon(Icons.arrow_forward),
+            label: Text('Siguiente'),
+            onPressed: _currentPage < totalPages - 1
+                ? () {
+                    setState(() {
+                      _currentPage++;
+                    });
+                  }
+                : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -114,94 +262,116 @@ class _DepartmentManagementScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Gestión de Departamentos'),
-        backgroundColor: Colors.green, // Fondo verde
-        foregroundColor: Colors.white, // Texto blanco
-      ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                // 🔹 Buscador
-                Padding(
-                  padding: EdgeInsets.all(16),
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Buscar departamento...',
-                      prefixIcon: Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value;
-                        _currentPage = 0; // Reiniciar la paginación al buscar
-                      });
-                    },
-                  ),
-                ),
-
-                // 🔹 Lista de departamentos
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: departamentosPaginados.length,
-                    itemBuilder: (context, index) {
-                      final depto = departamentosPaginados[index];
-                      return Card(
-                        margin:
-                            EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: ListTile(
-                          title: Text(depto['nombre']),
-                          subtitle: Text('ID: ${depto['id']}'),
-                          trailing: IconButton(
-                            icon: Icon(Icons.delete, color: Colors.red),
-                            onPressed: () => _eliminarDepartamento(depto['id']),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-                // 🔹 Controles de paginación
-                Padding(
-                  padding: EdgeInsets.all(8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.arrow_back),
-                        onPressed: _currentPage > 0
-                            ? () {
-                                setState(() {
-                                  _currentPage--;
-                                });
-                              }
-                            : null,
-                      ),
-                      Text('Página ${_currentPage + 1}'),
-                      IconButton(
-                        icon: Icon(Icons.arrow_forward),
-                        onPressed: () {
-                          if (_hayMasPaginas(departamentosFiltrados)) {
-                            setState(() {
-                              _currentPage++;
-                            });
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+        title: Row(
+          children: [
+            Icon(Icons.business, color: secondaryColor),
+            SizedBox(width: 8),
+            Text(
+              'Gestión de Departamentos',
+              style: TextStyle(
+                color: secondaryColor,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-      floatingActionButton: FloatingActionButton(
+          ],
+        ),
+        backgroundColor: primaryColor,
+        elevation: 4,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh, color: secondaryColor),
+            onPressed: _loadDepartamentos,
+            tooltip: 'Recargar lista',
+          ),
+        ],
+      ),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: _isLoading
+            ? Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                ),
+              )
+            : Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Buscar departamento...',
+                        prefixIcon: Icon(Icons.search, color: primaryColor),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: primaryColor, width: 2),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value;
+                          _currentPage = 0;
+                        });
+                      },
+                    ),
+                  ),
+                  Expanded(
+                    child: departamentosPaginados.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.business,
+                                  size: 64,
+                                  color: Colors.grey[400],
+                                ),
+                                SizedBox(height: 16),
+                                Text(
+                                  'No hay departamentos',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  'Agrega un nuevo departamento',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: departamentosPaginados.length,
+                            itemBuilder: (context, index) {
+                              return Padding(
+                                padding: EdgeInsets.only(bottom: 8),
+                                child: _buildDepartmentCard(
+                                    departamentosPaginados[index]),
+                              );
+                            },
+                          ),
+                  ),
+                  _buildPaginationControls(departamentosFiltrados.length),
+                ],
+              ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.push(
             context,
@@ -210,13 +380,23 @@ class _DepartmentManagementScreenState
             ),
           ).then((result) {
             if (result == true) {
-              _loadDepartamentos(); // Recargar la lista después de crear un departamento
+              _loadDepartamentos();
             }
           });
         },
-        child: Icon(Icons.add),
-        backgroundColor: Colors.green, // Fondo verde
+        backgroundColor: primaryColor,
+        icon: Icon(Icons.add, color: Colors.white),
+        label: Text(
+          'Nuevo Departamento',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        elevation: 4,
+        tooltip: 'Crear nuevo departamento',
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }

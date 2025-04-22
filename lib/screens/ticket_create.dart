@@ -10,7 +10,8 @@ class TicketCreateScreen extends StatefulWidget {
   _TicketCreateScreenState createState() => _TicketCreateScreenState();
 }
 
-class _TicketCreateScreenState extends State<TicketCreateScreen> {
+class _TicketCreateScreenState extends State<TicketCreateScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _tituloController = TextEditingController();
   final TextEditingController _descripcionController = TextEditingController();
@@ -25,10 +26,46 @@ class _TicketCreateScreenState extends State<TicketCreateScreen> {
   String? _nombreArchivo;
   final ApiService apiService = ApiService();
 
+  // Animación
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
+  // Colores y estilos
+  final Color primaryColor = Colors.green;
+  final Color secondaryColor = Colors.white;
+  final TextStyle cardTitleStyle = TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.bold,
+    color: Colors.grey[800],
+  );
+  final TextStyle cardSubtitleStyle = TextStyle(
+    fontSize: 14,
+    color: Colors.grey[600],
+  );
+
   @override
   void initState() {
     super.initState();
     _fetchDropdownData();
+
+    // Inicializar animación
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeIn,
+      ),
+    );
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchDropdownData() async {
@@ -163,122 +200,248 @@ class _TicketCreateScreenState extends State<TicketCreateScreen> {
   }
 
   @override
-  @override
   Widget build(BuildContext context) {
-    const primaryColor = Colors.green;
-    const secondaryColor = Colors.white;
-
     if (_isFetchingData) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Crear Nuevo Ticket',
-              style: TextStyle(color: secondaryColor)),
+          title: Text(
+            'Crear Nuevo Ticket',
+            style: TextStyle(
+              color: secondaryColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           backgroundColor: primaryColor,
+          elevation: 4,
         ),
-        body: const Center(child: CircularProgressIndicator()),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Cargando datos...',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Crear Nuevo Ticket',
-            style: TextStyle(color: secondaryColor)),
+        title: Text(
+          'Crear Nuevo Ticket',
+          style: TextStyle(
+            color: secondaryColor,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         backgroundColor: primaryColor,
+        elevation: 4,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              _buildCard([
-                _buildTextField(_tituloController, 'Título', Icons.title),
-                const SizedBox(height: 12),
-                _buildTextField(
-                    _descripcionController, 'Descripción', Icons.description,
-                    maxLines: 3),
-              ]),
-              const SizedBox(height: 16),
-              _buildCard([
-                _buildDropdown(
-                  label: 'Departamento',
-                  value: _departamento,
-                  items: departamentos,
-                  icon: Icons.business,
-                  onChanged: (v) => setState(() => _departamento = v),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildCard(
+                  title: 'Información del Ticket',
+                  icon: Icons.info_outline,
+                  children: [
+                    _buildTextField(_tituloController, 'Título', Icons.title),
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                      _descripcionController,
+                      'Descripción',
+                      Icons.description,
+                      maxLines: 5,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                _buildDropdown(
-                  label: 'Prioridad',
-                  value: _prioridad,
-                  items: prioridades,
-                  icon: Icons.flag,
-                  onChanged: (v) => setState(() => _prioridad = v),
+                const SizedBox(height: 16),
+                _buildCard(
+                  title: 'Clasificación',
+                  icon: Icons.category,
+                  children: [
+                    _buildDropdown(
+                      label: 'Departamento',
+                      value: _departamento,
+                      items: departamentos,
+                      icon: Icons.business,
+                      onChanged: (v) => setState(() => _departamento = v),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildDropdown(
+                      label: 'Prioridad',
+                      value: _prioridad,
+                      items: prioridades,
+                      icon: Icons.flag,
+                      onChanged: (v) => setState(() => _prioridad = v),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildReadonlyField('Estado', 'Abierto', Icons.info),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                _buildReadonlyField('Estado', 'Abierto', Icons.info),
-              ]),
-              const SizedBox(height: 16),
-              _buildCard([
-                ElevatedButton.icon(
-                  onPressed: _seleccionarArchivo,
-                  icon: const Icon(Icons.attach_file),
-                  label: const Text('Adjuntar Archivo'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    foregroundColor: secondaryColor,
-                  ),
-                ),
-                if (_nombreArchivo != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text('📂 $_nombreArchivo',
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-              ]),
-              const SizedBox(height: 24),
-              _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : ElevatedButton(
-                      onPressed: _submitForm,
+                const SizedBox(height: 16),
+                _buildCard(
+                  title: 'Archivo Adjunto',
+                  icon: Icons.attach_file,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _seleccionarArchivo,
+                      icon: const Icon(Icons.attach_file),
+                      label: const Text('Seleccionar Archivo'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryColor,
                         foregroundColor: secondaryColor,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        padding:
+                            EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
-                      child: const Text('Crear Ticket',
-                          style: TextStyle(fontSize: 16)),
                     ),
-            ],
+                    if (_nombreArchivo != null)
+                      Container(
+                        margin: EdgeInsets.only(top: 12),
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.insert_drive_file, color: primaryColor),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _nombreArchivo!,
+                                style: TextStyle(fontWeight: FontWeight.w500),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.close, color: Colors.red),
+                              onPressed: () {
+                                setState(() {
+                                  _archivoBytes = null;
+                                  _nombreArchivo = null;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                _isLoading
+                    ? Center(
+                        child: CircularProgressIndicator(
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(primaryColor),
+                        ),
+                      )
+                    : ElevatedButton(
+                        onPressed: _submitForm,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          foregroundColor: secondaryColor,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 4,
+                        ),
+                        child: Text(
+                          'Crear Ticket',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildCard(List<Widget> children) {
+  Widget _buildCard({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
     return Card(
-      color: Colors.grey[100],
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      elevation: 4,
+      shadowColor: Colors.black26,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start, children: children),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: primaryColor),
+                SizedBox(width: 8),
+                Text(
+                  title,
+                  style: cardTitleStyle,
+                ),
+              ],
+            ),
+            Divider(height: 24),
+            ...children,
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildTextField(
-      TextEditingController controller, String label, IconData icon,
-      {int maxLines = 1}) {
+    TextEditingController controller,
+    String label,
+    IconData icon, {
+    int maxLines = 1,
+  }) {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        prefixIcon: Icon(icon, color: primaryColor),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: primaryColor, width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.white,
       ),
       validator: (v) => v == null || v.isEmpty ? 'Campo requerido' : null,
     );
@@ -295,8 +458,21 @@ class _TicketCreateScreenState extends State<TicketCreateScreen> {
       value: value,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        prefixIcon: Icon(icon, color: primaryColor),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: primaryColor, width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.white,
       ),
       items: items.map<DropdownMenuItem<int>>((item) {
         return DropdownMenuItem<int>(
@@ -315,10 +491,15 @@ class _TicketCreateScreenState extends State<TicketCreateScreen> {
       enabled: false,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        prefixIcon: Icon(icon, color: Colors.grey),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        filled: true,
+        fillColor: Colors.grey[100],
       ),
-      style: const TextStyle(color: Colors.grey),
+      style: TextStyle(color: Colors.grey[600]),
     );
   }
 }

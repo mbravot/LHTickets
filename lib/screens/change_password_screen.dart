@@ -3,11 +3,14 @@ import '../services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
+  const ChangePasswordScreen({super.key});
+
   @override
   _ChangePasswordScreenState createState() => _ChangePasswordScreenState();
 }
 
-class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
+class _ChangePasswordScreenState extends State<ChangePasswordScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _oldPasswordController = TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
@@ -15,6 +18,56 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       TextEditingController();
   bool _isLoading = false;
   final ApiService apiService = ApiService();
+
+  // Estados para mostrar/ocultar contraseñas
+  bool _showOldPassword = false;
+  bool _showNewPassword = false;
+  bool _showConfirmPassword = false;
+
+  // Animación
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
+  // Colores y estilos
+  final Color primaryColor = Colors.green;
+  final Color secondaryColor = Colors.white;
+  final Color backgroundColor = Colors.grey[100]!;
+  final TextStyle cardTitleStyle = TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.bold,
+    color: Colors.grey[800],
+  );
+  final TextStyle cardSubtitleStyle = TextStyle(
+    fontSize: 14,
+    color: Colors.grey[600],
+  );
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Inicializar animación
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeIn,
+      ),
+    );
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _oldPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
 
   Future<void> _changePassword() async {
     if (!_formKey.currentState!.validate()) return;
@@ -29,10 +82,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     if (userId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: Usuario no autenticado'),
+          content: Text('❌ Error: Usuario no autenticado'),
           backgroundColor: Colors.red,
         ),
       );
+      setState(() => _isLoading = false);
       return;
     }
 
@@ -45,7 +99,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('✅ Clave actualizada con éxito'),
+          content: Text('✅ Contraseña actualizada con éxito'),
           backgroundColor: Colors.green,
         ),
       );
@@ -64,56 +118,177 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     }
   }
 
+  Widget _buildPasswordField(
+    TextEditingController controller,
+    String label,
+    IconData icon, {
+    String? Function(String?)? validator,
+    required bool showPassword,
+    required VoidCallback onTogglePassword,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: !showPassword,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: primaryColor),
+        suffixIcon: IconButton(
+          icon: Icon(
+            showPassword ? Icons.visibility_off : Icons.visibility,
+            color: primaryColor,
+          ),
+          onPressed: onTogglePassword,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: primaryColor, width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.white,
+      ),
+      validator: validator,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Cambiar Clave'),
-        backgroundColor: Colors.green, // Fondo verde
-        foregroundColor: Colors.white, // Texto blanco
+        title: Row(
+          children: [
+            Icon(Icons.lock, color: secondaryColor),
+            SizedBox(width: 8),
+            Text(
+              'Cambiar Contraseña',
+              style: TextStyle(
+                color: secondaryColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: primaryColor,
+        elevation: 4,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextFormField(
-                controller: _oldPasswordController,
-                obscureText: true,
-                decoration: InputDecoration(labelText: 'Clave Actual'),
-                validator: (value) =>
-                    value!.isEmpty ? 'Ingrese su clave actual' : null,
-              ),
-              TextFormField(
-                controller: _newPasswordController,
-                obscureText: true,
-                decoration: InputDecoration(labelText: 'Nueva Clave'),
-                validator: (value) => value!.length < 6
-                    ? 'La clave debe tener al menos 6 caracteres'
-                    : null,
-              ),
-              TextFormField(
-                controller: _confirmPasswordController,
-                obscureText: true,
-                decoration: InputDecoration(labelText: 'Confirmar Nueva Clave'),
-                validator: (value) => value != _newPasswordController.text
-                    ? 'Las claves no coinciden'
-                    : null,
-              ),
-              SizedBox(height: 20),
-              _isLoading
-                  ? Center(child: CircularProgressIndicator())
-                  : ElevatedButton(
-                      onPressed: _changePassword,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green, // 🔹 Fondo verde
-                        foregroundColor: Colors.white, // 🔹 Texto blanco
-                      ),
-                      child: Text('Actualizar Clave'),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Tarjeta de cambio de contraseña
+                Card(
+                  elevation: 4,
+                  shadowColor: Colors.black26,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.security, color: primaryColor),
+                            SizedBox(width: 8),
+                            Text(
+                              'Seguridad',
+                              style: cardTitleStyle,
+                            ),
+                          ],
+                        ),
+                        Divider(height: 24),
+                        _buildPasswordField(
+                          _oldPasswordController,
+                          'Contraseña Actual',
+                          Icons.lock_outline,
+                          validator: (value) => value!.isEmpty
+                              ? 'Ingrese su contraseña actual'
+                              : null,
+                          showPassword: _showOldPassword,
+                          onTogglePassword: () {
+                            setState(() {
+                              _showOldPassword = !_showOldPassword;
+                            });
+                          },
+                        ),
+                        SizedBox(height: 16),
+                        _buildPasswordField(
+                          _newPasswordController,
+                          'Nueva Contraseña',
+                          Icons.lock_outline,
+                          validator: (value) => value!.length < 6
+                              ? 'La contraseña debe tener al menos 6 caracteres'
+                              : null,
+                          showPassword: _showNewPassword,
+                          onTogglePassword: () {
+                            setState(() {
+                              _showNewPassword = !_showNewPassword;
+                            });
+                          },
+                        ),
+                        SizedBox(height: 16),
+                        _buildPasswordField(
+                          _confirmPasswordController,
+                          'Confirmar Nueva Contraseña',
+                          Icons.lock_outline,
+                          validator: (value) =>
+                              value != _newPasswordController.text
+                                  ? 'Las contraseñas no coinciden'
+                                  : null,
+                          showPassword: _showConfirmPassword,
+                          onTogglePassword: () {
+                            setState(() {
+                              _showConfirmPassword = !_showConfirmPassword;
+                            });
+                          },
+                        ),
+                      ],
                     ),
-            ],
+                  ),
+                ),
+                SizedBox(height: 24),
+                _isLoading
+                    ? Center(
+                        child: CircularProgressIndicator(
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(primaryColor),
+                        ),
+                      )
+                    : ElevatedButton.icon(
+                        onPressed: _changePassword,
+                        icon: Icon(Icons.save),
+                        label: Text(
+                          'Actualizar Contraseña',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          foregroundColor: secondaryColor,
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 4,
+                        ),
+                      ),
+              ],
+            ),
           ),
         ),
       ),
