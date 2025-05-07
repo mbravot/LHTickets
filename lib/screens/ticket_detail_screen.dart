@@ -610,35 +610,45 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
 
               // Botones de acción
               if (ticket['estado'] == "Abierto")
-                ElevatedButton.icon(
-                  onPressed: () =>
-                      _cambiarEstadoTicket(ticket['id'], "En Proceso"),
-                  icon: Icon(Icons.pending),
-                  label: Text("Cambiar a En Proceso"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                Center(
+                  child: SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.7,
+                    child: ElevatedButton.icon(
+                      onPressed: () =>
+                          _cambiarEstadoTicket(ticket['id'], "En Proceso"),
+                      icon: Icon(Icons.pending),
+                      label: Text("Cambiar a En Proceso"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        elevation: 4,
+                      ),
                     ),
-                    elevation: 4,
                   ),
                 ),
 
               if (ticket['estado'] == "En Proceso")
-                ElevatedButton.icon(
-                  onPressed: _cerrarTicket,
-                  icon: Icon(Icons.check_circle),
-                  label: Text("Cerrar Ticket"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                Center(
+                  child: SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.7,
+                    child: ElevatedButton.icon(
+                      onPressed: _cerrarTicket,
+                      icon: Icon(Icons.check_circle),
+                      label: Text("Cerrar Ticket"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        elevation: 4,
+                      ),
                     ),
-                    elevation: 4,
                   ),
                 ),
 

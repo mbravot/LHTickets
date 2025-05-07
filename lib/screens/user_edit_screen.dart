@@ -281,7 +281,14 @@ class _UserEditScreenState extends State<UserEditScreen>
         filled: true,
         fillColor: Colors.grey[100],
       ),
-      validator: (value) => value!.isEmpty ? 'Campo requerido' : null,
+      validator: (value) {
+        if (_isNewUser) {
+          return value!.isEmpty ? 'Campo requerido' : null;
+        } else {
+          // En edición, no es obligatorio
+          return null;
+        }
+      },
     );
   }
 

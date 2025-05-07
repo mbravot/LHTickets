@@ -292,6 +292,9 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                               validator: (value) =>
                                   value!.isEmpty ? 'Ingresa tu clave' : null,
+                              onFieldSubmitted: (_) {
+                                if (!_isLoading) _login();
+                              },
                             ),
                           ),
                         ),

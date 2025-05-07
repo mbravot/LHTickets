@@ -693,7 +693,7 @@ class ApiService {
     if (token == null) throw Exception('Token no encontrado');
 
     final response = await http.post(
-      Uri.parse('$baseUrl/usuarios'),
+      Uri.parse('$baseUrl/auth/register'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',

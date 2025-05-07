@@ -68,6 +68,10 @@ class _TicketListScreenState extends State<TicketListScreen>
     color: Colors.grey[600],
   );
 
+  // Nuevo: Estado de filtro para 'Mis Tickets'
+  String misTicketsEstadoFiltro = 'Todos';
+  final List<String> estadosFiltro = ['Todos', 'Abierto', 'En Proceso', 'Cerrado'];
+
   @override
   void initState() {
     super.initState();
@@ -91,10 +95,10 @@ class _TicketListScreenState extends State<TicketListScreen>
       }
 
       int tabLength = userRole == "1"
-          ? 5
+          ? 5  // Mis Tickets, Asignados, Cerrados, Sin Agente, Todos
           : userRole == "2"
-              ? 3
-              : 2;
+              ? 3  // Mis Tickets, Asignados, Cerrados
+              : 1; // Solo Mis Tickets
 
       _tabController = TabController(length: tabLength, vsync: this);
       _tabController.addListener(() {
@@ -108,15 +112,9 @@ class _TicketListScreenState extends State<TicketListScreen>
       await _loadTickets();
 
       // Asegurar que se muestre la lista correcta según el rol
-      if (userRole == "1" || userRole == "2") {
-        setState(() {
-          filteredTickets = ticketsAsignados;
-        });
-      } else {
-        setState(() {
-          filteredTickets = misTicketsAbiertos;
-        });
-      }
+      setState(() {
+        filteredTickets = misTickets;
+      });
     } catch (e) {
       print("❌ Error al inicializar datos: $e");
       ScaffoldMessenger.of(context).showSnackBar(
@@ -133,41 +131,36 @@ class _TicketListScreenState extends State<TicketListScreen>
     setState(() => isLoading = true);
     try {
       final allTickets = await widget.apiService.getTickets();
+      List<dynamic> nuevosMisTickets = allTickets
+          .where((ticket) => ticket['id_usuario'] == userId)
+          .toList();
+      List<dynamic> nuevosTicketsAsignados = allTickets
+          .where((ticket) =>
+              ticket['id_agente'] != null &&
+              ticket['id_agente'] == userId &&
+              (ticket['estado'] == 'Abierto' || ticket['estado'] == 'En Proceso'))
+          .toList();
+      List<dynamic> nuevosMisTicketsCerrados = allTickets
+          .where((ticket) =>
+              ticket['id_agente'] != null &&
+              ticket['id_agente'] == userId &&
+              ticket['estado'] == 'Cerrado')
+          .toList();
+      List<dynamic> nuevosTodosLosTickets = allTickets;
+      List<dynamic> nuevosTicketsSinAgente =
+          allTickets.where((ticket) => ticket['id_agente'] == null).toList();
+
       setState(() {
-        // Mis Tickets: Solo tickets del usuario actual
-        misTickets = allTickets
-            .where((ticket) => ticket['id_usuario'] == userId)
-            .toList();
+        misTickets = nuevosMisTickets;
+        ticketsAsignados = nuevosTicketsAsignados;
+        misTicketsCerrados = nuevosMisTicketsCerrados;
+        todosLosTickets = nuevosTodosLosTickets;
+        ticketsSinAgente = nuevosTicketsSinAgente;
+      });
 
-        // Mis Tickets Abiertos/En Proceso
-        misTicketsAbiertos = misTickets
-            .where((ticket) =>
-                ticket['estado'] == 'Abierto' ||
-                ticket['estado'] == 'En Proceso')
-            .toList();
-
-        // Mis Tickets Cerrados
-        misTicketsCerrados = misTickets
-            .where((ticket) => ticket['estado'] == 'Cerrado')
-            .toList();
-
-        // Tickets Asignados: Solo tickets asignados al usuario actual (agentes y administradores)
-        ticketsAsignados = allTickets
-            .where((ticket) =>
-                ticket['id_agente'] != null && ticket['id_agente'] == userId)
-            .toList();
-
-        // Todos los Tickets (solo para administradores)
-        todosLosTickets = allTickets;
-
-        // Tickets Sin Agente (solo para administradores)
-        ticketsSinAgente =
-            allTickets.where((ticket) => ticket['id_agente'] == null).toList();
-
-        // Actualizar la lista filtrada según la pestaña actual
-        if (_tabController != null) {
-          _filterTickets(searchController.text);
-        }
+      // Aseguramos el filtrado después del primer frame
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _filterTickets(searchController.text);
       });
     } catch (e) {
       print("❌ Error al cargar tickets: $e");
@@ -219,14 +212,18 @@ class _TicketListScreenState extends State<TicketListScreen>
     if (userRole == "1") {
       // Administrador
       switch (_tabController.index) {
-        case 0: // Asignados
+        case 0: // Abiertos
           selectedList = ticketsAsignados;
           break;
-        case 1: // Mis Tickets Abiertos
-          selectedList = misTicketsAbiertos;
-          break;
-        case 2: // Mis Tickets Cerrados
+        case 1: // Cerrados
           selectedList = misTicketsCerrados;
+          break;
+        case 2: // Mis Tickets
+          selectedList = misTickets;
+          // Filtrar por estado si aplica
+          if (misTicketsEstadoFiltro != 'Todos') {
+            selectedList = selectedList.where((ticket) => ticket['estado'] == misTicketsEstadoFiltro).toList();
+          }
           break;
         case 3: // Sin Agente
           selectedList = ticketsSinAgente;
@@ -240,29 +237,28 @@ class _TicketListScreenState extends State<TicketListScreen>
     } else if (userRole == "2") {
       // Agente
       switch (_tabController.index) {
-        case 0: // Asignados
+        case 0: // Abiertos
           selectedList = ticketsAsignados;
           break;
-        case 1: // Mis Tickets Abiertos
-          selectedList = misTicketsAbiertos;
-          break;
-        case 2: // Mis Tickets Cerrados
+        case 1: // Cerrados
           selectedList = misTicketsCerrados;
+          break;
+        case 2: // Mis Tickets
+          selectedList = misTickets;
+          // Filtrar por estado si aplica
+          if (misTicketsEstadoFiltro != 'Todos') {
+            selectedList = selectedList.where((ticket) => ticket['estado'] == misTicketsEstadoFiltro).toList();
+          }
           break;
         default:
           selectedList = ticketsAsignados;
       }
     } else {
       // Usuario normal
-      switch (_tabController.index) {
-        case 0: // Mis Tickets Abiertos
-          selectedList = misTicketsAbiertos;
-          break;
-        case 1: // Mis Tickets Cerrados
-          selectedList = misTicketsCerrados;
-          break;
-        default:
-          selectedList = misTicketsAbiertos;
+      selectedList = misTickets;
+      // Filtrar por estado si aplica
+      if (misTicketsEstadoFiltro != 'Todos') {
+        selectedList = selectedList.where((ticket) => ticket['estado'] == misTicketsEstadoFiltro).toList();
       }
     }
 
@@ -824,25 +820,10 @@ class _TicketListScreenState extends State<TicketListScreen>
   }
 
   Widget _buildTicketList(List<dynamic> ticketList) {
-    if (ticketList.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[400]),
-            SizedBox(height: 16),
-            Text(
-              "No hay tickets disponibles",
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+    final bool mostrarFiltroMisTickets =
+        (userRole == "1" && _tabController.index == 2) ||
+        (userRole == "2" && _tabController.index == 2) ||
+        (userRole != "1" && userRole != "2");
 
     int startIndex = _currentPage * _ticketsPerPage;
     int endIndex = startIndex + _ticketsPerPage;
@@ -853,113 +834,163 @@ class _TicketListScreenState extends State<TicketListScreen>
 
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: TextField(
-            controller: searchController,
-            decoration: InputDecoration(
-              hintText: 'Buscar tickets...',
-              prefixIcon: Icon(Icons.search, color: primaryColor),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: primaryColor, width: 2),
-              ),
-              filled: true,
-              fillColor: Colors.white,
-            ),
-            onChanged: _filterTickets,
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            itemCount: paginatedTickets.length,
-            itemBuilder: (context, index) {
-              final ticket = paginatedTickets[index];
-              return AnimatedContainer(
-                duration: Duration(milliseconds: 300),
-                margin: EdgeInsets.only(bottom: 12),
-                child: Card(
-                  elevation: 4,
-                  shadowColor: Colors.black26,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+        if (mostrarFiltroMisTickets)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Wrap(
+              spacing: 8,
+              children: estadosFiltro.map((estado) {
+                final bool seleccionado = misTicketsEstadoFiltro == estado;
+                return ChoiceChip(
+                  label: Text(estado),
+                  selected: seleccionado,
+                  selectedColor: _chipColorEstado(estado),
+                  labelStyle: TextStyle(
+                    color: seleccionado ? Colors.white : _chipColorEstado(estado),
+                    fontWeight: FontWeight.bold,
                   ),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () async {
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              TicketDetailScreen(ticket: ticket),
+                  backgroundColor: Colors.white,
+                  onSelected: (selected) {
+                    if (selected) {
+                      setState(() {
+                        misTicketsEstadoFiltro = estado;
+                      });
+                      _filterTickets(searchController.text);
+                    }
+                  },
+                );
+              }).toList(),
+            ),
+          ),
+        if (ticketList.isEmpty)
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[400]),
+                  SizedBox(height: 16),
+                  Text(
+                    "No hay tickets disponibles",
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else ...[
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: TextField(
+              controller: searchController,
+              decoration: InputDecoration(
+                hintText: 'Buscar tickets...',
+                prefixIcon: Icon(Icons.search, color: primaryColor),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: primaryColor, width: 2),
+                ),
+                filled: true,
+                fillColor: Colors.white,
+              ),
+              onChanged: _filterTickets,
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              itemCount: paginatedTickets.length,
+              itemBuilder: (context, index) {
+                final ticket = paginatedTickets[index];
+                return AnimatedContainer(
+                  duration: Duration(milliseconds: 300),
+                  margin: EdgeInsets.only(bottom: 12),
+                  child: Card(
+                    elevation: 4,
+                    shadowColor: Colors.black26,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                TicketDetailScreen(ticket: ticket),
+                          ),
+                        );
+                        if (result == true) {
+                          _refreshTickets();
+                        }
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              _getStatusColor(ticket['estado'] ?? ''),
+                              _getStatusColor(ticket['estado'] ?? '')
+                                  .withOpacity(0.7),
+                            ],
+                          ),
                         ),
-                      );
-                      if (result == true) {
-                        _refreshTickets();
-                      }
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            _getStatusColor(ticket['estado'] ?? ''),
-                            _getStatusColor(ticket['estado'] ?? '')
-                                .withOpacity(0.7),
-                          ],
-                        ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    ticket['titulo'] ?? 'Sin título',
-                                    style: cardTitleStyle,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      ticket['titulo'] ?? 'Sin título',
+                                      style: cardTitleStyle,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
-                                ),
-                                _buildStatusChip(ticket['estado'] ?? ''),
-                                _buildPopupMenu(ticket),
-                              ],
-                            ),
-                            SizedBox(height: 12),
-                            _buildInfoRow(Icons.person,
-                                "Creado por: ${ticket['usuario'] ?? 'Desconocido'}"),
-                            _buildInfoRow(Icons.business,
-                                "Departamento: ${ticket['departamento'] ?? 'Sin asignar'}"),
-                            _buildInfoRow(Icons.support_agent,
-                                "Agente: ${ticket['agente'] ?? 'Sin asignar'}"),
-                            _buildInfoRow(Icons.calendar_today,
-                                "Fecha: ${ticket['creado'] ?? 'N/A'}"),
-                          ],
+                                  _buildStatusChip(ticket['estado'] ?? ''),
+                                  _buildPopupMenu(ticket),
+                                ],
+                              ),
+                              SizedBox(height: 12),
+                              _buildInfoRow(Icons.person,
+                                  "Creado por: ${ticket['usuario'] ?? 'Desconocido'}"),
+                              _buildInfoRow(Icons.business,
+                                  "Departamento: ${ticket['departamento'] ?? 'Sin asignar'}"),
+                              _buildInfoRow(Icons.support_agent,
+                                  "Agente: ${ticket['agente'] ?? 'Sin asignar'}"),
+                              _buildInfoRow(Icons.calendar_today,
+                                  "Fecha: ${ticket['creado'] ?? 'N/A'}"),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
-        ),
-        _buildPaginationControls(ticketList.length),
+          _buildPaginationControls(ticketList.length),
+        ],
       ],
     );
   }
@@ -1183,64 +1214,276 @@ class _TicketListScreenState extends State<TicketListScreen>
             ),
             child: TabBar(
               controller: _tabController,
-              indicatorColor: primaryColor,
               labelColor: primaryColor,
               unselectedLabelColor: Colors.grey[500],
+              indicatorColor: primaryColor,
               indicatorWeight: 3,
               tabs: [
-                if (userRole == "1" || userRole == "2")
+                if (userRole == "1") ...[
                   Tab(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.assignment),
+                        Icon(Icons.assignment, color: primaryColor),
                         SizedBox(width: 8),
-                        Text("Asignados (${ticketsAsignados.length})"),
+                        Text(
+                          'Abiertos',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        SizedBox(width: 8),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${ticketsAsignados.length}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.inbox),
-                      SizedBox(width: 8),
-                      Text("Mis Tickets (${misTicketsAbiertos.length})"),
-                    ],
-                  ),
-                ),
-                Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.check_circle),
-                      SizedBox(width: 8),
-                      Text("Cerrados (${misTicketsCerrados.length})"),
-                    ],
-                  ),
-                ),
-                if (userRole == "1")
                   Tab(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.person_off),
+                        Icon(Icons.check_circle, color: primaryColor),
                         SizedBox(width: 8),
-                        Text("Sin Agente (${ticketsSinAgente.length})"),
+                        Text(
+                          'Cerrados',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        SizedBox(width: 8),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${misTicketsCerrados.length}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                if (userRole == "1")
                   Tab(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.list),
+                        Icon(Icons.inbox, color: primaryColor),
                         SizedBox(width: 8),
-                        Text("Todos (${todosLosTickets.length})"),
+                        Text(
+                          'Mis Tickets',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        SizedBox(width: 8),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${misTickets.length}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.person_off, color: primaryColor),
+                        SizedBox(width: 8),
+                        Text(
+                          'Sin Agente',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        SizedBox(width: 8),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${ticketsSinAgente.length}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.list, color: primaryColor),
+                        SizedBox(width: 8),
+                        Text(
+                          'Todos',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        SizedBox(width: 8),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${todosLosTickets.length}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else if (userRole == "2") ...[
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.assignment, color: primaryColor),
+                        SizedBox(width: 8),
+                        Text(
+                          'Abiertos',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        SizedBox(width: 8),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${ticketsAsignados.length}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.check_circle, color: primaryColor),
+                        SizedBox(width: 8),
+                        Text(
+                          'Cerrados',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        SizedBox(width: 8),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${misTicketsCerrados.length}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.inbox, color: primaryColor),
+                        SizedBox(width: 8),
+                        Text(
+                          'Mis Tickets',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        SizedBox(width: 8),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${misTickets.length}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else ...[
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.inbox, color: primaryColor),
+                        SizedBox(width: 8),
+                        Text(
+                          'Mis Tickets',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        SizedBox(width: 8),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${misTickets.length}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1398,5 +1641,19 @@ class _TicketListScreenState extends State<TicketListScreen>
       ),
       onTap: onTap,
     );
+  }
+
+  // Nuevo: función para obtener color según estado para los chips
+  Color _chipColorEstado(String estado) {
+    switch (estado) {
+      case 'Abierto':
+        return Colors.green;
+      case 'En Proceso':
+        return Colors.orange;
+      case 'Cerrado':
+        return Colors.red;
+      default:
+        return primaryColor;
+    }
   }
 }
