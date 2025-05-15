@@ -6,6 +6,9 @@ import 'package:pdf/widgets.dart' as pw;
 import 'dart:html' as html;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:convert';
+import 'dart:typed_data';
+import 'package:pdf/pdf.dart';
+import 'package:intl/intl.dart';
 
 class TicketDetailScreen extends StatefulWidget {
   final Map<String, dynamic> ticket;
@@ -285,19 +288,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
             tooltip: 'Actualizar comentarios',
           ),
           IconButton(
-            icon: Icon(Icons.print),
-            tooltip: 'Imprimir ticket', color: Colors.white,
+            icon: Icon(Icons.picture_as_pdf, color: secondaryColor),
+            tooltip: 'Descargar PDF',
             onPressed: () {
-              if (kIsWeb) {
-                _imprimirTicketWeb(ticket);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('La impresión solo está disponible en la versión web.'),
-                    backgroundColor: Colors.orange,
-                  ),
-                );
-              }
+              _descargarTicketPDF(ticket);
             },
           ),
         ],
@@ -394,8 +388,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                         ],
                       ),
                       const Divider(height: 24),
-                      _buildInfoRow(
-                          Icons.person, "Creado por", ticket['usuario']),
+                      _buildInfoRow(Icons.confirmation_number, "ID", "#${ticket['id']}"),
+                      _buildInfoRow(Icons.title, "Título", ticket['titulo'] ?? 'Sin título'),
+                      _buildInfoRow(Icons.person, "Creado por", ticket['usuario']),
                       _buildInfoRow(Icons.support_agent, "Agente",
                           ticket['agente'] ?? 'Sin asignar'),
                       _buildInfoRow(
@@ -403,7 +398,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                       _buildInfoRow(Icons.business, "Departamento",
                           ticket['departamento']),
                       _buildInfoRow(
-                          Icons.calendar_today, "Fecha", ticket['creado']),
+                          Icons.calendar_today, "Fecha", formatearComoChile(ticket['creado'])),
                     ],
                   ),
                 ),
@@ -451,37 +446,93 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: InkWell(
-                    onTap: () => _abrirAdjunto(ticket['adjunto']),
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Icon(Icons.attach_file, color: primaryColor),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.attach_file, color: primaryColor),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Archivos Adjuntos',
+                              style: cardTitleStyle,
+                            ),
+                          ],
+                        ),
+                        const Divider(height: 16),
+                        ...((ticket['adjunto'] is String && ticket['adjunto'].isNotEmpty)
+                            ? ticket['adjunto'].split(',').where((a) => a is String && a.isNotEmpty).toList()
+                            : <String>[])
+                            .map<Widget>((file) => Row(
                               children: [
-                                Text(
-                                  'Archivos Adjuntos (${ticket['adjunto'].split(',').length})',
-                                  style: cardTitleStyle,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Toca para ver los archivos',
-                                  style: TextStyle(
-                                    color: Colors.blue,
-                                    decoration: TextDecoration.underline,
+                                Icon(Icons.insert_drive_file, color: primaryColor),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () async {
+                                      final String url = "https://api.lahornilla.cl/api/uploads/$file";
+                                      if (await canLaunch(url)) {
+                                        await launch(url);
+                                      } else {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('❌ No se pudo abrir el archivo: $file'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    child: Text(file, overflow: TextOverflow.ellipsis, style: TextStyle(decoration: TextDecoration.underline, color: Colors.blue)),
                                   ),
                                 ),
+                                IconButton(
+                                  icon: Icon(Icons.delete, color: Colors.red),
+                                  tooltip: 'Eliminar adjunto',
+                                  onPressed: () async {
+                                    bool confirmar = await showDialog(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: Text('Eliminar adjunto'),
+                                        content: Text('¿Seguro que deseas eliminar este archivo?'),
+                                        actions: [
+                                          TextButton(
+                                            child: Text('Cancelar'),
+                                            onPressed: () => Navigator.of(context).pop(false),
+                                          ),
+                                          TextButton(
+                                            child: Text('Eliminar', style: TextStyle(color: Colors.red)),
+                                            onPressed: () => Navigator.of(context).pop(true),
+                                          ),
+                                        ],
+                                      ),
+                                    ) ?? false;
+                                    if (confirmar) {
+                                      try {
+                                        await widget.apiService.eliminarAdjunto(ticket['id'], file);
+                                        setState(() {
+                                          final adjuntos = (ticket['adjunto'] is String && ticket['adjunto'].isNotEmpty)
+                                              ? ticket['adjunto'].split(',').where((a) => a is String && a.isNotEmpty).toList()
+                                              : <String>[];
+                                          adjuntos.remove(file);
+                                          ticket['adjunto'] = adjuntos.join(',');
+                                        });
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('Adjunto eliminado correctamente'), backgroundColor: Colors.green),
+                                        );
+                                      } catch (e) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('Error al eliminar adjunto: $e'), backgroundColor: Colors.red),
+                                        );
+                                      }
+                                    }
+                                  },
+                                ),
                               ],
-                            ),
-                          ),
-                          Icon(Icons.open_in_new, color: Colors.blue),
-                        ],
-                      ),
+                            ))
+                            .toList(),
+                      ],
                     ),
                   ),
                 ),
@@ -735,7 +786,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
     );
   }
 
-  void _imprimirTicketWeb(Map<String, dynamic> ticket) async {
+  Future<void> _descargarTicketPDF(Map<String, dynamic> ticket) async {
+    // Obtener comentarios
     List<dynamic> comentariosList = [];
     try {
       comentariosList = await widget.apiService.obtenerComentarios(ticket['id']);
@@ -743,72 +795,168 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
       comentariosList = [];
     }
 
-    final htmlContent = '''
-    <html>
-      <head>
-        <title>Detalle del Ticket</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 40px; }
-          h1 { color: #388e3c; }
-          .section { margin-bottom: 24px; }
-          .label { font-weight: bold; }
-          .estado { background: #81C784; color: #fff; padding: 8px 16px; border-radius: 8px; }
-          .comentario { border-bottom: 1px solid #e0e0e0; margin-bottom: 12px; padding-bottom: 8px; }
-          .comentario-usuario { font-weight: bold; color: #388e3c; }
-          .comentario-fecha { color: #888; font-size: 12px; margin-left: 8px; }
-          .comentario-texto { margin-top: 4px; }
-        </style>
-        <script>
-          window.onload = function() { window.print(); }
-        </script>
-      </head>
-      <body>
-        <h1>Detalle del Ticket</h1>
-        <div class="section estado">Estado: ${ticket['estado']} | ID: #${ticket['id']}</div>
-        <div class="section">
-          <div><span class="label">Creado por:</span> ${ticket['usuario']}</div>
-          <div><span class="label">Agente:</span> ${ticket['agente'] ?? 'Sin asignar'}</div>
-          <div><span class="label">Prioridad:</span> ${ticket['prioridad']}</div>
-          <div><span class="label">Departamento:</span> ${ticket['departamento']}</div>
-          <div><span class="label">Fecha:</span> ${ticket['creado']}</div>
-        </div>
-        <div class="section">
-          <div class="label">Descripción:</div>
-          <div>${ticket['descripcion']}</div>
-        </div>
-        ${ticket['adjunto'] != null && ticket['adjunto'].isNotEmpty ? '''
-        <div class="section">
-          <div class="label">Archivos Adjuntos:</div>
-          <ul>
-            ${ticket['adjunto'].split(',').map((file) => '<li>$file</li>').join()}
-          </ul>
-        </div>
-        ''' : ''}
-        ${comentariosList.isNotEmpty ? '''
-        <div class="section">
-          <div class="label">Comentarios:</div>
-          ${comentariosList.map((comentario) => '''
-            <div class="comentario">
-              <span class="comentario-usuario">${comentario['usuario']}</span>
-              <span class="comentario-fecha">${comentario['creado']}</span>
-              <div class="comentario-texto">${comentario['comentario']}</div>
-            </div>
-          ''').join('')}
-        </div>
-        ''' : ''}
-      </body>
-    </html>
-    ''';
+    final pdf = pw.Document();
+    final baseColor = PdfColor.fromInt(0xFF388e3c);
+    final lightGrey = PdfColor.fromInt(0xFFF5F5F5);
 
-    final bytes = utf8.encode(htmlContent);
-    final blob = html.Blob([bytes], 'text/html');
+    pdf.addPage(
+      pw.Page(
+        margin: const pw.EdgeInsets.all(24),
+        build: (pw.Context context) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Container(
+              padding: const pw.EdgeInsets.all(12),
+              decoration: pw.BoxDecoration(
+                color: baseColor,
+                borderRadius: pw.BorderRadius.circular(8),
+              ),
+              child: pw.Row(
+                children: [
+                  pw.Text('Estado: ${ticket['estado']}', style: pw.TextStyle(color: PdfColor.fromInt(0xFFFFFFFF), fontWeight: pw.FontWeight.bold, fontSize: 16)),
+                  pw.SizedBox(width: 16),
+                  pw.Text('ID: #${ticket['id']}', style: pw.TextStyle(color: PdfColor.fromInt(0xFFFFFFFF), fontSize: 14)),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 16),
+            pw.Container(
+              padding: const pw.EdgeInsets.all(12),
+              decoration: pw.BoxDecoration(
+                color: lightGrey,
+                borderRadius: pw.BorderRadius.circular(8),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Row(
+                    children: [
+                      pw.Icon(pw.IconData(0xe88e), color: baseColor), // info_outline
+                      pw.SizedBox(width: 8),
+                      pw.Text('Información del Ticket', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16)),
+                    ],
+                  ),
+                  pw.Divider(),
+                  pw.Text('Título: ${ticket['titulo'] ?? 'Sin título'}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                  pw.Text('Creado por: ${ticket['usuario']}'),
+                  pw.Text('Agente: ${ticket['agente'] ?? "Sin asignar"}'),
+                  pw.Text('Prioridad: ${ticket['prioridad']}'),
+                  pw.Text('Departamento: ${ticket['departamento']}'),
+                  pw.Text('Fecha: ${formatearComoChile(ticket['creado'])}'),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 16),
+            pw.Container(
+              padding: const pw.EdgeInsets.all(12),
+              decoration: pw.BoxDecoration(
+                color: lightGrey,
+                borderRadius: pw.BorderRadius.circular(8),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Row(
+                    children: [
+                      pw.Icon(pw.IconData(0xe873), color: baseColor), // description
+                      pw.SizedBox(width: 8),
+                      pw.Text('Descripción', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16)),
+                    ],
+                  ),
+                  pw.Divider(),
+                  pw.Text(ticket['descripcion'] ?? ''),
+                ],
+              ),
+            ),
+            if (ticket['adjunto'] != null && ticket['adjunto'].isNotEmpty) ...[
+              pw.SizedBox(height: 16),
+              pw.Container(
+                padding: const pw.EdgeInsets.all(12),
+                decoration: pw.BoxDecoration(
+                  color: lightGrey,
+                  borderRadius: pw.BorderRadius.circular(8),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Row(
+                      children: [
+                        pw.Icon(pw.IconData(0xe226), color: baseColor), // attach_file
+                        pw.SizedBox(width: 8),
+                        pw.Text('Archivos Adjuntos', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16)),
+                      ],
+                    ),
+                    pw.Divider(),
+                    pw.Bullet(text: ticket['adjunto'].split(',').join(', ')),
+                  ],
+                ),
+              ),
+            ],
+            pw.SizedBox(height: 16),
+            pw.Container(
+              padding: const pw.EdgeInsets.all(12),
+              decoration: pw.BoxDecoration(
+                color: lightGrey,
+                borderRadius: pw.BorderRadius.circular(8),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Row(
+                    children: [
+                      pw.Icon(pw.IconData(0xe0b7), color: baseColor), // comment
+                      pw.SizedBox(width: 8),
+                      pw.Text('Comentarios', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16)),
+                    ],
+                  ),
+                  pw.Divider(),
+                  if (comentariosList.isEmpty)
+                    pw.Text('No hay comentarios aún.', style: pw.TextStyle(color: PdfColor.fromInt(0xFF888888))),
+                  ...comentariosList.map((comentario) => pw.Container(
+                    margin: const pw.EdgeInsets.only(bottom: 8),
+                    padding: const pw.EdgeInsets.all(8),
+                    decoration: pw.BoxDecoration(
+                      color: PdfColor.fromInt(0xFFFFFFFF),
+                      borderRadius: pw.BorderRadius.circular(6),
+                      border: pw.Border.all(color: PdfColor.fromInt(0xFFDDDDDD)),
+                    ),
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Row(
+                          children: [
+                            pw.Text(comentario['usuario'], style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                            pw.SizedBox(width: 12),
+                            pw.Text(comentario['creado'], style: pw.TextStyle(fontSize: 10, color: PdfColor.fromInt(0xFF888888))),
+                          ],
+                        ),
+                        pw.SizedBox(height: 4),
+                        pw.Text(comentario['comentario']),
+                      ],
+                    ),
+                  )),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final pdfBytes = await pdf.save();
+    final blob = html.Blob([pdfBytes], 'application/pdf');
     final url = html.Url.createObjectUrlFromBlob(blob);
-
-    final fileName = 'ticket${ticket['id']}.html';
+    final fileName = 'ticket${ticket['id']}.pdf';
     final anchor = html.AnchorElement(href: url)
       ..setAttribute('download', fileName)
       ..click();
-
     html.Url.revokeObjectUrl(url);
+  }
+
+  String formatearComoChile(String fechaStr) {
+    final fechaConOffset = fechaStr.replaceFirst(' ', 'T') + '-04:00';
+    final dt = DateTime.parse(fechaConOffset);
+    return '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
+           '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
   }
 }

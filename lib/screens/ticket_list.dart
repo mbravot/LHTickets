@@ -764,37 +764,63 @@ class _TicketListScreenState extends State<TicketListScreen>
       );
 
       if (result != null) {
+        print("🔍 Archivos seleccionados: ${result.files.length}");
         List<String> archivosSubidos = [];
+        List<String> archivosFallidos = [];
+        Set<String> archivosProcesados = {}; // Para evitar duplicados
 
         for (var file in result.files) {
-          final fileName = file.name;
-          final bytes = file.bytes ?? (file.path != null ? await File(file.path!).readAsBytes() : null);
+          // Verificar si el archivo ya fue procesado
+          if (archivosProcesados.contains(file.name)) {
+            print("⚠️ Archivo duplicado detectado: ${file.name}");
+            continue;
+          }
+          
+          try {
+            print("📤 Procesando archivo: ${file.name}");
+            final bytes = file.bytes ?? (file.path != null ? await File(file.path!).readAsBytes() : null);
+            
+            if (bytes != null) {
+              // Generar nombre único para el archivo con un pequeño retraso
+              await Future.delayed(Duration(milliseconds: 100)); // Pequeño retraso para asegurar timestamp único
+              final timestamp = DateTime.now().millisecondsSinceEpoch;
+              final extension = file.name.split('.').last;
+              final nombreBase = file.name.substring(0, file.name.lastIndexOf('.'));
+              final nombreUnico = '${nombreBase}_${timestamp}.$extension';
 
-          if (bytes != null) {
-            try {
+              print("📝 Subiendo archivo con nombre único: $nombreUnico");
               await widget.apiService.subirArchivo(
                 bytes,
-                fileName,
+                nombreUnico,
                 ticketId,
               );
-              archivosSubidos.add(fileName);
-            } catch (e) {
-              print("❌ Error al subir archivo "+file.name+": $e");
+              archivosSubidos.add(file.name);
+              archivosProcesados.add(file.name);
+              print("✅ Archivo subido exitosamente: ${file.name}");
             }
+          } catch (e) {
+            print("❌ Error al subir archivo ${file.name}: $e");
+            archivosFallidos.add(file.name);
           }
         }
 
         if (archivosSubidos.isNotEmpty) {
+          String mensaje = '✅ Archivos adjuntados: ${archivosSubidos.join(", ")}';
+          if (archivosFallidos.isNotEmpty) {
+            mensaje += '\n❌ No se pudieron adjuntar: ${archivosFallidos.join(", ")}';
+          }
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('✅ Archivos adjuntados: "+archivosSubidos.join(", ")+"'),
-              backgroundColor: Colors.green,
+              content: Text(mensaje),
+              backgroundColor: archivosFallidos.isEmpty ? Colors.green : Colors.orange,
+              duration: Duration(seconds: 5),
             ),
           );
           _refreshTickets();
         }
       }
     } catch (e) {
+      print("❌ Error general al adjuntar archivos: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('❌ Error al adjuntar archivos: $e'),
@@ -1002,11 +1028,11 @@ class _TicketListScreenState extends State<TicketListScreen>
                               const SizedBox(height: 8),
                               // Título
                               Text(
-                                ticket['titulo'] ?? 'Sin título',
+                                      ticket['titulo'] ?? 'Sin título',
                                 style: cardTitleStyle.copyWith(fontSize: 18),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                               const SizedBox(height: 8),
                               // Creado por y Fecha en la misma línea
                               Row(
@@ -1021,7 +1047,7 @@ class _TicketListScreenState extends State<TicketListScreen>
                                   Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
                                   SizedBox(width: 4),
                                   Text(
-                                    ticket['creado'] ?? 'N/A',
+                                    formatearComoChile(ticket['creado']),
                                     style: cardSubtitleStyle,
                                   ),
                                 ],
@@ -1721,5 +1747,12 @@ class _TicketListScreenState extends State<TicketListScreen>
       default:
         return primaryColor;
     }
+  }
+
+  String formatearComoChile(String fechaStr) {
+    final fechaConOffset = fechaStr.replaceFirst(' ', 'T') + '-04:00';
+    final dt = DateTime.parse(fechaConOffset);
+    return '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
+           '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
   }
 }

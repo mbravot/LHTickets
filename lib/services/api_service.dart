@@ -496,9 +496,9 @@ class ApiService {
       // Agregar el archivo como multipart
       request.files.add(
         http.MultipartFile.fromBytes(
-          'file',
-          archivoBytes,
-          filename: fileName,
+        'file',
+        archivoBytes,
+        filename: fileName,
         ),
       );
 
@@ -742,6 +742,24 @@ class ApiService {
 
     if (response.statusCode != 201) {
       throw Exception('Error al crear el usuario: ${response.body}');
+    }
+  }
+
+  // 🔹 Eliminar un adjunto de un ticket
+  Future<void> eliminarAdjunto(int ticketId, String nombreAdjunto) async {
+    String? token = await _getToken();
+    if (token == null) throw Exception('Token no encontrado');
+
+    final response = await http.delete(
+      Uri.parse('$baseUrl/tickets/$ticketId/adjunto/$nombreAdjunto'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Error al eliminar adjunto: ${response.body}');
     }
   }
 }

@@ -165,7 +165,7 @@ class _TicketCreateScreenState extends State<TicketCreateScreen>
             for (var archivo in _archivosSeleccionados) {
               try {
                 if (archivo['bytes'] != null) {
-                  await apiService.subirArchivo(
+            await apiService.subirArchivo(
                     archivo['bytes'],
                     archivo['name'],
                     ticketId,
@@ -183,13 +183,13 @@ class _TicketCreateScreenState extends State<TicketCreateScreen>
               if (archivosFallidos.isNotEmpty) {
                 mensaje += '\n❌ No se pudieron adjuntar: ${archivosFallidos.join(", ")}';
               }
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
                   content: Text(mensaje),
                   backgroundColor: archivosFallidos.isEmpty ? Colors.green : Colors.orange,
                   duration: Duration(seconds: 5),
-                ),
-              );
+              ),
+            );
             }
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
