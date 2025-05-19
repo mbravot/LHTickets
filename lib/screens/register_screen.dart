@@ -400,33 +400,66 @@ class _RegisterScreenState extends State<RegisterScreen>
 
                 SizedBox(height: 24),
 
-                _isLoading
-                    ? Center(
-                        child: CircularProgressIndicator(
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(primaryColor),
+                // Botón de crear usuario
+                Card(
+                  elevation: 4,
+                  shadowColor: Colors.black26,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.save_alt, color: primaryColor),
+                            SizedBox(width: 8),
+                            Text(
+                              'Guardar Usuario',
+                              style: cardTitleStyle,
+                            ),
+                          ],
                         ),
-                      )
-                    : ElevatedButton.icon(
-                        onPressed: _register,
-                        icon: Icon(Icons.person_add),
-                        label: Text(
-                          'Crear Usuario',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Divider(height: 24),
+                        _isLoading
+                            ? Center(
+                                child: CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                                ),
+                              )
+                            : ElevatedButton.icon(
+                                onPressed: _register,
+                                icon: Icon(Icons.person_add),
+                                label: Text(
+                                  'Crear Usuario',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: primaryColor,
+                                  foregroundColor: secondaryColor,
+                                  padding: EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  elevation: 4,
+                                  minimumSize: Size(double.infinity, 50),
+                                ),
+                              ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Al crear el usuario, se le enviará un correo electrónico con sus credenciales de acceso.',
+                          style: cardSubtitleStyle,
+                          textAlign: TextAlign.center,
                         ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryColor,
-                          foregroundColor: secondaryColor,
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          elevation: 4,
-                        ),
-                      ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

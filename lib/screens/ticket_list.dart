@@ -305,6 +305,9 @@ class _TicketListScreenState extends State<TicketListScreen>
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
                 child: Text('Cancelar'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.green,
+                ),
               ),
               ElevatedButton.icon(
                 onPressed: () => Navigator.of(context).pop(true),

@@ -143,8 +143,54 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
     bool confirmar = await _mostrarConfirmacion();
     if (!confirmar) return;
 
+    // Controlador para el campo de comentario
+    final comentarioController = TextEditingController();
+
+    // Mostrar diálogo para ingresar comentario
+    String? comentario = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Comentario de cierre'),
+        content: TextField(
+          controller: comentarioController,
+          decoration: InputDecoration(
+            hintText: 'Ingrese un comentario para el cierre del ticket',
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 3,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancelar'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.green,
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(comentarioController.text),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: Text('Cerrar Ticket'),
+          ),
+        ],
+      ),
+    );
+
+    if (comentario == null || comentario.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Debe ingresar un comentario para cerrar el ticket'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     try {
-      await widget.apiService.cerrarTicket(ticket['id']);
+      await widget.apiService.cerrarTicket(ticket['id'], comentario);
       setState(() {
         ticket['estado'] = "Cerrado"; // Actualiza el estado localmente
       });
@@ -157,8 +203,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
       );
 
       // 🔹 Notificar a la pantalla anterior que el ticket fue cerrado
-      Navigator.pop(
-          context, true); // Devuelve `true` para indicar que se cerró el ticket
+      Navigator.pop(context, true); // Devuelve `true` para indicar que se cerró el ticket
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -180,11 +225,17 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
                 child: const Text('Cancelar'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.green,
+                ),
               ),
               ElevatedButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                 child: const Text('Cerrar Ticket'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
               ),
             ],
           ),

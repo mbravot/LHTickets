@@ -598,24 +598,6 @@ class ApiService {
     }
   }
 
-// Metodo para cerrar el ticket
-  Future<void> cerrarTicket(int ticketId) async {
-    String? token = await _getToken();
-    if (token == null) throw Exception('Token no encontrado');
-
-    final response = await http.put(
-      Uri.parse('$baseUrl/tickets/$ticketId/cerrar'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token'
-      },
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception('Error al cerrar el ticket: ${response.body}');
-    }
-  }
-
 // Metodo para obtener comentario al ticket
   Future<List<dynamic>> obtenerComentarios(int ticketId) async {
     String? token = await _getToken();
@@ -760,6 +742,66 @@ class ApiService {
 
     if (response.statusCode != 200) {
       throw Exception('Error al eliminar adjunto: ${response.body}');
+    }
+  }
+
+  // Método para cerrar el ticket
+  Future<Map<String, dynamic>> cerrarTicket(int ticketId, String comentario) async {
+    try {
+      String? token = await _getToken();
+      if (token == null) throw Exception('Token no encontrado');
+      
+      final response = await http.put(
+        Uri.parse('$baseUrl/tickets/$ticketId/cerrar'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'comentario': comentario,
+          'fecha_cierre': DateTime.now().toIso8601String(),
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Error al cerrar el ticket: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error al cerrar el ticket: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> actualizarTicket(int id, Map<String, dynamic> datos) async {
+    try {
+      String? token = await _getToken();
+      if (token == null) throw Exception('Token no encontrado');
+
+      // Asegurarnos de que la fecha de actualización esté en el formato correcto y en UTC
+      if (datos['fecha_actualizacion'] != null) {
+        final fecha = DateTime.now().toUtc();
+        datos['fecha_actualizacion'] = fecha.toIso8601String();
+      }
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/tickets/$id'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(datos),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Error al actualizar el ticket: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error al actualizar el ticket: $e');
     }
   }
 }
