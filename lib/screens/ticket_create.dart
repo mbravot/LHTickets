@@ -80,13 +80,13 @@ class _TicketCreateScreenState extends State<TicketCreateScreen>
 
         // Estado "Abierto" por defecto (sin mostrarlo en el formulario)
         _estado = estadosData.firstWhere(
-          (e) => e['nombre'] == 'Abierto',
+          (e) => e['nombre'] == 'ABIERTO',
           orElse: () => estadosData.isNotEmpty ? estadosData.first : null,
         )?['id'];
 
         // Prioridad "Baja" por defecto
         _prioridad = prioridadesData.firstWhere(
-          (p) => p['nombre'] == 'Baja',
+          (p) => p['nombre'] == 'BAJA',
           orElse: () =>
               prioridadesData.isNotEmpty ? prioridadesData.first : null,
         )?['id'];
@@ -155,7 +155,7 @@ class _TicketCreateScreenState extends State<TicketCreateScreen>
         var response = await apiService.createTicket(ticketData);
 
         if (response.containsKey('ticket_id')) {
-          int ticketId = response['ticket_id'];
+          String ticketId = response['ticket_id'].toString();
 
           // 🔹 Si hay archivos adjuntos, subirlos
           if (_archivosSeleccionados.isNotEmpty) {

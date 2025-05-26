@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 
 class RegisterScreen extends StatefulWidget {
-  final String userRole; // Recibe el rol del usuario
+  final String userRole;
 
   const RegisterScreen({Key? key, required this.userRole}) : super(key: key);
 
@@ -14,14 +14,16 @@ class _RegisterScreenState extends State<RegisterScreen>
     with SingleTickerProviderStateMixin {
   final ApiService apiService = ApiService();
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _nombreController = TextEditingController();
+  final TextEditingController _usuarioController = TextEditingController();
   final TextEditingController _correoController = TextEditingController();
   final TextEditingController _claveController = TextEditingController();
   int? _selectedRol;
   int? _selectedSucursal;
+  int? _selectedColaborador;
   bool _isLoading = false;
   List<dynamic> _roles = [];
   List<dynamic> _sucursales = [];
+  List<dynamic> _colaboradores = [];
 
   // Animación
   late AnimationController _animationController;
@@ -46,6 +48,7 @@ class _RegisterScreenState extends State<RegisterScreen>
     super.initState();
     _loadRoles();
     _loadSucursales();
+    _loadColaboradores();
 
     // Inicializar animación
     _animationController = AnimationController(
@@ -64,7 +67,7 @@ class _RegisterScreenState extends State<RegisterScreen>
   @override
   void dispose() {
     _animationController.dispose();
-    _nombreController.dispose();
+    _usuarioController.dispose();
     _correoController.dispose();
     _claveController.dispose();
     super.dispose();
@@ -110,6 +113,26 @@ class _RegisterScreenState extends State<RegisterScreen>
     }
   }
 
+  Future<void> _loadColaboradores() async {
+    try {
+      setState(() => _isLoading = true);
+      List<dynamic> colaboradores = await apiService.getColaboradores();
+      setState(() {
+        _colaboradores = colaboradores;
+      });
+    } catch (e) {
+      print("❌ Error al cargar colaboradores: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error al cargar los colaboradores'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
   void _register() async {
     if (_formKey.currentState!.validate() &&
         _selectedRol != null &&
@@ -117,14 +140,16 @@ class _RegisterScreenState extends State<RegisterScreen>
       setState(() => _isLoading = true);
 
       try {
-        await apiService.register({
-          'nombre': _nombreController.text,
+        final userData = {
+          'usuario': _usuarioController.text,
           'correo': _correoController.text,
           'clave': _claveController.text,
           'id_rol': _selectedRol,
-          'id_sucursal': _selectedSucursal,
-          'id_estado': 1 // Siempre activo por defecto
-        });
+          'id_sucursalactiva': _selectedSucursal,
+          'id_colaborador': _selectedColaborador
+        };
+
+        await apiService.register(userData);
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -200,6 +225,7 @@ class _RegisterScreenState extends State<RegisterScreen>
     required IconData icon,
     required List<DropdownMenuItem<T>> items,
     required void Function(T?) onChanged,
+    bool isRequired = true,
   }) {
     return DropdownButtonFormField<T>(
       value: value,
@@ -223,6 +249,7 @@ class _RegisterScreenState extends State<RegisterScreen>
       ),
       items: items,
       onChanged: onChanged,
+      validator: isRequired ? (value) => value == null ? 'Campo requerido' : null : null,
     );
   }
 
@@ -311,8 +338,8 @@ class _RegisterScreenState extends State<RegisterScreen>
                         ),
                         Divider(height: 24),
                         _buildTextField(
-                          _nombreController,
-                          'Nombre Completo',
+                          _usuarioController,
+                          'Nombre de Usuario',
                           Icons.person_outline,
                         ),
                         SizedBox(height: 16),
@@ -360,6 +387,30 @@ class _RegisterScreenState extends State<RegisterScreen>
                         ),
                         Divider(height: 24),
                         _buildDropdownField<int>(
+                          value: _selectedColaborador,
+                          label: 'Colaborador (Opcional)',
+                          icon: Icons.person_outline,
+                          items: [
+                            DropdownMenuItem<int>(
+                              value: null,
+                              child: Text('Ninguno'),
+                            ),
+                            ..._colaboradores.map<DropdownMenuItem<int>>((colaborador) {
+                              return DropdownMenuItem<int>(
+                                value: colaborador['id'],
+                                child: Text(colaborador['nombre']),
+                              );
+                            }).toList(),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedColaborador = value;
+                            });
+                          },
+                          isRequired: false,
+                        ),
+                        SizedBox(height: 16),
+                        _buildDropdownField<int>(
                           value: _selectedRol,
                           label: 'Rol',
                           icon: Icons.people_outline,
@@ -380,8 +431,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                           value: _selectedSucursal,
                           label: 'Sucursal',
                           icon: Icons.business_outlined,
-                          items: _sucursales
-                              .map<DropdownMenuItem<int>>((sucursal) {
+                          items: _sucursales.map<DropdownMenuItem<int>>((sucursal) {
                             return DropdownMenuItem<int>(
                               value: sucursal['id'],
                               child: Text(sucursal['nombre']),

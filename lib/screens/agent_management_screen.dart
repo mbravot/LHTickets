@@ -13,6 +13,7 @@ class _AgentManagementScreenState extends State<AgentManagementScreen>
   final ApiService apiService = ApiService();
   List<dynamic> agentes = [];
   List<dynamic> departamentos = [];
+  List<dynamic> usuarios = [];
   bool _isLoading = false;
   TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -68,6 +69,7 @@ class _AgentManagementScreenState extends State<AgentManagementScreen>
       setState(() => _isLoading = true);
       agentes = await apiService.getAgentesConDepartamentos();
       departamentos = await apiService.getDepartamentos();
+      usuarios = await apiService.getUsuarios();
       setState(() => _isLoading = false);
     } catch (e) {
       print("❌ Error al cargar datos: $e");
@@ -84,7 +86,7 @@ class _AgentManagementScreenState extends State<AgentManagementScreen>
   void _asignarDepartamento(int agenteId, int departamentoId) async {
     try {
       setState(() => _isLoading = true);
-      await apiService.asignarDepartamento(agenteId, departamentoId);
+      await apiService.asignarDepartamento(agenteId.toString(), departamentoId);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('✅ Departamento asignado correctamente'),
@@ -104,32 +106,24 @@ class _AgentManagementScreenState extends State<AgentManagementScreen>
     }
   }
 
-  Map<String, List<dynamic>> _agruparAgentesPorDepartamento() {
-    Map<String, List<dynamic>> agentesPorDepartamento = {};
-
+  Map<String, List<dynamic>> _agruparAgentesPorSucursal() {
+    Map<String, List<dynamic>> agentesPorSucursal = {};
     for (var agente in agentes) {
-      String departamento = agente['departamentos'].isNotEmpty
-          ? agente['departamentos'].join(', ')
-          : 'Sin asignar';
-
-      if (!agentesPorDepartamento.containsKey(departamento)) {
-        agentesPorDepartamento[departamento] = [];
+      String sucursal = (agente['sucursal'] ?? agente['sucursal_activa'] ?? 'Sin sucursal').toString();
+      if (!agentesPorSucursal.containsKey(sucursal)) {
+        agentesPorSucursal[sucursal] = [];
       }
-      agentesPorDepartamento[departamento]!.add(agente);
+      agentesPorSucursal[sucursal]!.add(agente);
     }
-
-    // Ordenar los departamentos alfabéticamente
-    agentesPorDepartamento = Map.fromEntries(
-      agentesPorDepartamento.entries.toList()
-        ..sort((a, b) => a.key.compareTo(b.key)),
+    // Ordenar las sucursales alfabéticamente
+    agentesPorSucursal = Map.fromEntries(
+      agentesPorSucursal.entries.toList()..sort((a, b) => a.key.compareTo(b.key)),
     );
-
-    // Ordenar los agentes alfabéticamente dentro de cada departamento
-    agentesPorDepartamento.forEach((key, value) {
-      value.sort((a, b) => a['nombre'].compareTo(b['nombre']));
+    // Ordenar los agentes alfabéticamente dentro de cada sucursal
+    agentesPorSucursal.forEach((key, value) {
+      value.sort((a, b) => a['nombre'].toString().compareTo(b['nombre'].toString()));
     });
-
-    return agentesPorDepartamento;
+    return agentesPorSucursal;
   }
 
   List<dynamic> _filtrarAgentes(List<dynamic> agentes) {
@@ -156,7 +150,21 @@ class _AgentManagementScreenState extends State<AgentManagementScreen>
     return startIndex < agentesFiltrados.length;
   }
 
-  Widget _buildAgentCard(dynamic agente, String departamento) {
+  Widget _buildAgentCard(dynamic agente, String sucursal) {
+    // Obtener departamentos del agente
+    List<String> nombresDepartamentos = [];
+    if (agente['departamentos'] != null && agente['departamentos'] is List) {
+      nombresDepartamentos = (agente['departamentos'] as List)
+        .map((d) => d is Map && d['nombre'] != null ? d['nombre'].toString() : d.toString())
+        .toList();
+    }
+    // Buscar usuario por id_usuario
+    final usuario = usuarios.firstWhere(
+      (u) => u['id'].toString() == (agente['id_usuario']?.toString() ?? agente['id']?.toString()),
+      orElse: () => null,
+    );
+    final correo = usuario != null ? usuario['correo'] ?? '' : '';
+    final sucursalActiva = usuario != null ? (usuario['sucursal'] ?? usuario['sucursal_activa'] ?? '') : '';
     return Card(
       elevation: 4,
       shadowColor: Colors.black26,
@@ -183,40 +191,110 @@ class _AgentManagementScreenState extends State<AgentManagementScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        agente['nombre'],
+                        agente['nombre'] ?? agente['usuario'] ?? '',
                         style: cardTitleStyle,
                       ),
                       Text(
-                        agente['correo'] ?? '',
+                        correo,
                         style: cardSubtitleStyle,
                       ),
+                      Text(
+                        'Sucursal: $sucursalActiva',
+                        style: cardSubtitleStyle,
+                      ),
+                      if (nombresDepartamentos.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4.0),
+                          child: Wrap(
+                            spacing: 6.0,
+                            runSpacing: 2.0,
+                            children: nombresDepartamentos.map((dep) => Chip(
+                              label: Text(dep, style: TextStyle(fontSize: 12)),
+                              backgroundColor: primaryColor.withOpacity(0.1),
+                              labelStyle: TextStyle(color: primaryColor),
+                            )).toList(),
+                          ),
+                        ),
                     ],
                   ),
                 ),
-                DropdownButton<int>(
-                  hint: Text("Asignar"),
-                  items: departamentos.map<DropdownMenuItem<int>>((dept) {
-                    return DropdownMenuItem<int>(
-                      value: dept['id'],
-                      child: Text(dept['nombre']),
+                IconButton(
+                  icon: Icon(Icons.edit, color: primaryColor),
+                  tooltip: 'Asignar departamentos',
+                  onPressed: () async {
+                    List<int> selectedIds = [];
+                    var rawList = (agente['departamentos_id'] ?? agente['departamentos'] ?? []) as List;
+                    for (var d in rawList) {
+                      int? id = d is int ? d : int.tryParse(d.toString());
+                      if (id != null) selectedIds.add(id);
+                    }
+                    final result = await showDialog<List>(
+                      context: context,
+                      builder: (context) {
+                        return AlertDialog(
+                          title: Text('Asignar Departamentos'),
+                          content: StatefulBuilder(
+                            builder: (context, setStateDialog) {
+                              return SingleChildScrollView(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: departamentos.map<Widget>((dep) {
+                                    int depId = 0;
+                                    if (dep['id'] is int) {
+                                      depId = dep['id'];
+                                    } else if (dep['id'] is String) {
+                                      depId = int.tryParse(dep['id']) ?? 0;
+                                    }
+                                    return CheckboxListTile(
+                                      value: selectedIds.contains(depId),
+                                      title: Text(dep['nombre']),
+                                      onChanged: (checked) {
+                                        setStateDialog(() {
+                                          if (checked == true) {
+                                            if (!selectedIds.contains(depId)) selectedIds.add(depId);
+                                          } else {
+                                            selectedIds.remove(depId);
+                                          }
+                                        });
+                                      },
+                                    );
+                                  }).toList(),
+                                ),
+                              );
+                            },
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: Text('Cancelar', style: TextStyle(color: Colors.red)),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => Navigator.of(context).pop(selectedIds),
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                              child: Text('Guardar', style: TextStyle(color: Colors.white)),
+                            ),
+                          ],
+                        );
+                      },
                     );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      _asignarDepartamento(agente['id'], value);
+                    if (result != null) {
+                      try {
+                        final idsInt = (result as List)
+                          .map((e) => int.tryParse(e.toString()) ?? 0)
+                          .where((e) => e != 0)
+                          .toList();
+                        await apiService.asignarDepartamentos(agente['id'], idsInt);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('✅ Departamentos asignados correctamente'), backgroundColor: Colors.green),
+                        );
+                        _loadData();
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('❌ Error: $e'), backgroundColor: Colors.red),
+                        );
+                      }
                     }
                   },
-                ),
-              ],
-            ),
-            SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(Icons.business, size: 16, color: Colors.grey[600]),
-                SizedBox(width: 8),
-                Text(
-                  "Departamento: $departamento",
-                  style: cardSubtitleStyle,
                 ),
               ],
             ),
@@ -287,7 +365,7 @@ class _AgentManagementScreenState extends State<AgentManagementScreen>
 
   @override
   Widget build(BuildContext context) {
-    final agentesPorDepartamento = _agruparAgentesPorDepartamento();
+    final agentesPorSucursal = _agruparAgentesPorSucursal();
 
     return Scaffold(
       appBar: AppBar(
@@ -357,24 +435,20 @@ class _AgentManagementScreenState extends State<AgentManagementScreen>
                   Expanded(
                     child: ListView.builder(
                       padding: EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: agentesPorDepartamento.length,
+                      itemCount: agentesPorSucursal.length,
                       itemBuilder: (context, index) {
-                        final entry =
-                            agentesPorDepartamento.entries.elementAt(index);
-                        final departamento = entry.key;
+                        final entry = agentesPorSucursal.entries.elementAt(index);
+                        final sucursal = entry.key;
                         final agentesFiltrados = _filtrarAgentes(entry.value);
-                        final agentesPaginados =
-                            _obtenerAgentesPaginados(agentesFiltrados);
-
+                        final agentesPaginados = _obtenerAgentesPaginados(agentesFiltrados);
                         if (agentesPaginados.isEmpty) return SizedBox.shrink();
-
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Padding(
                               padding: EdgeInsets.symmetric(vertical: 8),
                               child: Text(
-                                departamento,
+                                sucursal,
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -384,7 +458,7 @@ class _AgentManagementScreenState extends State<AgentManagementScreen>
                             ),
                             ...agentesPaginados.map((agente) => Padding(
                                   padding: EdgeInsets.only(bottom: 8),
-                                  child: _buildAgentCard(agente, departamento),
+                                  child: _buildAgentCard(agente, sucursal),
                                 )),
                           ],
                         );

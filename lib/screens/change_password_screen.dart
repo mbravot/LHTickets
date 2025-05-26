@@ -77,9 +77,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen>
     });
 
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    int? userId = int.tryParse(prefs.getString('user_id') ?? '');
-
-    if (userId == null) {
+    String? userId = prefs.getString('user_id');
+    if (userId == null || userId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('❌ Error: Usuario no autenticado'),

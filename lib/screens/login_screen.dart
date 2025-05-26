@@ -40,7 +40,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _checkLoginStatus() async {
-    final token = await widget.sessionService.getToken();
+    final token = await widget.sessionService.getAccessToken();
     if (token != null) {
       if (!mounted) return;
       Navigator.pushReplacement(
@@ -405,9 +405,10 @@ class _LoginScreenState extends State<LoginScreen>
           _claveController.text,
         );
 
-        // Usar el servicio de sesión para guardar los datos
+        // Guardar access_token y refresh_token
         await widget.sessionService.saveSession(
           response['access_token'],
+          response['refresh_token'],
           response['usuario'],
         );
 

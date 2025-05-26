@@ -77,7 +77,7 @@ class _TicketEditScreenState extends State<TicketEditScreen>
       };
 
       try {
-        await apiService.updateTicket(widget.ticket['id'], updatedTicket);
+        await apiService.updateTicket(widget.ticket['id'].toString(), updatedTicket);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('✅ Ticket actualizado con éxito'),
@@ -149,7 +149,7 @@ class _TicketEditScreenState extends State<TicketEditScreen>
                       ),
                       const Divider(height: 24),
                       _buildInfoRow(Icons.confirmation_number, "ID",
-                          "#${widget.ticket['id']}"),
+                          "#${widget.ticket['id'].toString()}"),
                       _buildInfoRow(
                           Icons.person, "Creado por", widget.ticket['usuario']),
                       _buildInfoRow(Icons.support_agent, "Agente",

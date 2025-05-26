@@ -68,7 +68,6 @@ class _UserManagementScreenState extends State<UserManagementScreen>
       setState(() => _isLoading = true);
       final users = await apiService.getUsuariosActivos();
       setState(() {
-        // Ordenar usuarios alfabéticamente por nombre
         usuarios = List.from(users)
           ..sort((a, b) => (a['nombre'] as String)
               .toLowerCase()
@@ -189,8 +188,8 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                   SizedBox(width: 8),
                   _buildInfoChip(
                     Icons.toggle_on_outlined,
-                    user['estado'] ?? 'Desconocido',
-                    user['estado'] == 'activo' ? Colors.green : Colors.red,
+                    (user['estado'] ?? 'Desconocido').toUpperCase(),
+                    user['estado'] == 'ACTIVO' ? Colors.green : Colors.red,
                   ),
                 ],
               ),
@@ -227,6 +226,65 @@ class _UserManagementScreenState extends State<UserManagementScreen>
               fontSize: 12,
               color: color,
               fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaginationControls(int totalItems) {
+    int totalPages = (totalItems / _itemsPerPage).ceil();
+
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ElevatedButton.icon(
+            icon: Icon(Icons.arrow_back),
+            label: Text('Anterior'),
+            onPressed: _currentPage > 0
+                ? () {
+                    setState(() {
+                      _currentPage--;
+                    });
+                  }
+                : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              "Página ${_currentPage + 1} de $totalPages",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          ElevatedButton.icon(
+            icon: Icon(Icons.arrow_forward),
+            label: Text('Siguiente'),
+            onPressed: _currentPage < totalPages - 1
+                ? () {
+                    setState(() {
+                      _currentPage++;
+                    });
+                  }
+                : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
           ),
         ],
@@ -276,33 +334,27 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                 children: [
                   // Buscador
                   Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Buscar usuario...',
-                        prefixIcon: Icon(Icons.search, color: primaryColor),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey[300]!),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            decoration: InputDecoration(
+                              hintText: 'Buscar usuario...',
+                              prefixIcon: Icon(Icons.search),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onChanged: (value) {
+                              setState(() {
+                                _searchQuery = value;
+                              });
+                            },
+                          ),
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey[300]!),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: primaryColor, width: 2),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey[100],
-                      ),
-                      onChanged: (value) {
-                        setState(() {
-                          _searchQuery = value;
-                          _currentPage = 0; // Reiniciar la paginación al buscar
-                        });
-                      },
+                      ],
                     ),
                   ),
 
@@ -352,61 +404,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
 
                   // Controles de paginación
                   if (usuariosFiltrados.isNotEmpty)
-                    Container(
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: Offset(0, -5),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          IconButton(
-                            icon:
-                                Icon(Icons.arrow_back_ios, color: primaryColor),
-                            onPressed: _currentPage > 0
-                                ? () {
-                                    setState(() {
-                                      _currentPage--;
-                                    });
-                                  }
-                                : null,
-                          ),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: primaryColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              'Página ${_currentPage + 1} de ${(usuariosFiltrados.length / _itemsPerPage).ceil()}',
-                              style: TextStyle(
-                                color: primaryColor,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.arrow_forward_ios,
-                                color: primaryColor),
-                            onPressed: _hayMasPaginas(usuariosFiltrados)
-                                ? () {
-                                    setState(() {
-                                      _currentPage++;
-                                    });
-                                  }
-                                : null,
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildPaginationControls(usuariosFiltrados.length),
                 ],
               ),
       ),

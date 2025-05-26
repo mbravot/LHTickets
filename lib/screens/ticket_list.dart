@@ -48,7 +48,7 @@ class _TicketListScreenState extends State<TicketListScreen>
 
   String? userRole;
   String? userName;
-  int? userId;
+  String? userId;
   bool isLoading = true;
 
   int _currentPage = 0;
@@ -71,8 +71,8 @@ class _TicketListScreenState extends State<TicketListScreen>
   );
 
   // Nuevo: Estado de filtro para 'Mis Tickets'
-  String misTicketsEstadoFiltro = 'Todos';
-  final List<String> estadosFiltro = ['Todos', 'Abierto', 'En Proceso', 'Cerrado'];
+  String misTicketsEstadoFiltro = 'TODOS';
+  final List<String> estadosFiltro = ['TODOS', 'ABIERTO', 'EN PROCESO', 'CERRADO'];
 
   @override
   void initState() {
@@ -81,6 +81,11 @@ class _TicketListScreenState extends State<TicketListScreen>
 
     // Establecer el contexto en el servicio de sesión para permitir la redirección
     widget.sessionService.setContext(context);
+
+    // Asegurar que el filtro esté en 'TODOS' al iniciar
+    setState(() {
+      misTicketsEstadoFiltro = 'TODOS';
+    });
   }
 
   Future<void> _initializeData() async {
@@ -89,7 +94,7 @@ class _TicketListScreenState extends State<TicketListScreen>
 
       userRole = sessionData['user_role'];
       userName = sessionData['nombre_usuario'] ?? "Usuario";
-      userId = int.tryParse(sessionData['user_id'] ?? '0');
+      userId = sessionData['user_id'];
 
       if (userRole == null) {
         _logout();
@@ -133,24 +138,32 @@ class _TicketListScreenState extends State<TicketListScreen>
     setState(() => isLoading = true);
     try {
       final allTickets = await widget.apiService.getTickets();
+      
+      // Asegurarse de que userId sea un string para la comparación
+      final String userIdStr = userId?.toString() ?? '';
+      
       List<dynamic> nuevosMisTickets = allTickets
-          .where((ticket) => ticket['id_usuario'] == userId)
+          .where((ticket) => ticket['id_usuario']?.toString() == userIdStr)
           .toList();
+          
       List<dynamic> nuevosTicketsAsignados = allTickets
           .where((ticket) =>
-              ticket['id_agente'] != null &&
-              ticket['id_agente'] == userId &&
-              (ticket['estado'] == 'Abierto' || ticket['estado'] == 'En Proceso'))
+              ticket['id_agente']?.toString() == userIdStr &&
+              (ticket['estado']?.toString() == 'ABIERTO' || 
+               ticket['estado']?.toString() == 'EN PROCESO'))
           .toList();
+          
       List<dynamic> nuevosMisTicketsCerrados = allTickets
           .where((ticket) =>
-              ticket['id_agente'] != null &&
-              ticket['id_agente'] == userId &&
-              ticket['estado'] == 'Cerrado')
+              ticket['id_agente']?.toString() == userIdStr &&
+              ticket['estado']?.toString() == 'CERRADO')
           .toList();
+          
       List<dynamic> nuevosTodosLosTickets = allTickets;
       List<dynamic> nuevosTicketsSinAgente =
-          allTickets.where((ticket) => ticket['id_agente'] == null).toList();
+          allTickets.where((ticket) => 
+              ticket['id_agente'] == null || 
+              ticket['id_agente'].toString().isEmpty).toList();
 
       setState(() {
         misTickets = nuevosMisTickets;
@@ -223,7 +236,7 @@ class _TicketListScreenState extends State<TicketListScreen>
         case 2: // Mis Tickets
           selectedList = misTickets;
           // Filtrar por estado si aplica
-          if (misTicketsEstadoFiltro != 'Todos') {
+          if (misTicketsEstadoFiltro != 'TODOS') {
             selectedList = selectedList.where((ticket) => ticket['estado'] == misTicketsEstadoFiltro).toList();
           }
           break;
@@ -248,7 +261,7 @@ class _TicketListScreenState extends State<TicketListScreen>
         case 2: // Mis Tickets
           selectedList = misTickets;
           // Filtrar por estado si aplica
-          if (misTicketsEstadoFiltro != 'Todos') {
+          if (misTicketsEstadoFiltro != 'TODOS') {
             selectedList = selectedList.where((ticket) => ticket['estado'] == misTicketsEstadoFiltro).toList();
           }
           break;
@@ -259,7 +272,7 @@ class _TicketListScreenState extends State<TicketListScreen>
       // Usuario normal
       selectedList = misTickets;
       // Filtrar por estado si aplica
-      if (misTicketsEstadoFiltro != 'Todos') {
+      if (misTicketsEstadoFiltro != 'TODOS') {
         selectedList = selectedList.where((ticket) => ticket['estado'] == misTicketsEstadoFiltro).toList();
       }
     }
@@ -367,7 +380,7 @@ class _TicketListScreenState extends State<TicketListScreen>
     }
   }
 
-  void _deleteTicket(int ticketId) async {
+  void _deleteTicket(String ticketId) async {
     bool confirmDelete = await _showDeleteConfirmation();
     if (confirmDelete) {
       try {
@@ -426,7 +439,9 @@ class _TicketListScreenState extends State<TicketListScreen>
         }
 
         if (userRole == "2") {
-          int departamentoId = ticket['id_departamento'] ?? -1;
+          int departamentoId = ticket['id_departamento'] is int
+              ? ticket['id_departamento']
+              : int.tryParse(ticket['id_departamento']?.toString() ?? '-1') ?? -1;
 
           if (departamentoId != -1) {
             opciones.add(
@@ -459,7 +474,7 @@ class _TicketListScreenState extends State<TicketListScreen>
     );
   }
 
-  void _mostrarDialogoAsignar(int ticketId) async {
+  void _mostrarDialogoAsignar(String ticketId) async {
     try {
       setState(() => isLoading = true);
       List agentes = await widget.apiService.getAgentes();
@@ -474,7 +489,7 @@ class _TicketListScreenState extends State<TicketListScreen>
         return;
       }
 
-      int? agenteSeleccionado;
+      String? agenteSeleccionado;
 
       await showDialog(
         context: context,
@@ -495,10 +510,21 @@ class _TicketListScreenState extends State<TicketListScreen>
             ),
             content: StatefulBuilder(
               builder: (context, setState) {
+                // Procesar agentes para IDs string únicos
+                List<Map<String, dynamic>> agentesProcesados = [];
+                Set<String> idsUnicos = {};
+                for (var agente in agentes) {
+                  final id = agente['id']?.toString();
+                  final nombre = agente['nombre'] ?? 'Sin nombre';
+                  if (id != null && id.isNotEmpty && !idsUnicos.contains(id)) {
+                    agentesProcesados.add({'id': id, 'nombre': nombre});
+                    idsUnicos.add(id);
+                  }
+                }
                 return Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    DropdownButtonFormField<int>(
+                    DropdownButtonFormField<String>(
                       value: agenteSeleccionado,
                       decoration: InputDecoration(
                         labelText: 'Selecciona un agente',
@@ -519,12 +545,18 @@ class _TicketListScreenState extends State<TicketListScreen>
                         filled: true,
                         fillColor: Colors.grey[100],
                       ),
-                      items: agentes.map<DropdownMenuItem<int>>((agente) {
-                        return DropdownMenuItem<int>(
-                          value: agente['id'],
-                          child: Text(agente['nombre']),
-                        );
-                      }).toList(),
+                      items: [
+                        DropdownMenuItem<String>(
+                          value: null,
+                          child: Text('Selecciona un agente'),
+                        ),
+                        ...agentesProcesados.map<DropdownMenuItem<String>>((agente) {
+                          return DropdownMenuItem<String>(
+                            value: agente['id'],
+                            child: Text(agente['nombre']),
+                          );
+                        }).toList(),
+                      ],
                       onChanged: (value) {
                         setState(() {
                           agenteSeleccionado = value;
@@ -609,7 +641,7 @@ class _TicketListScreenState extends State<TicketListScreen>
     }
   }
 
-  void _mostrarDialogoReasignar(int ticketId, int departamentoId) async {
+  void _mostrarDialogoReasignar(String ticketId, int departamentoId) async {
     try {
       setState(() => isLoading = true);
       List agentes =
@@ -625,125 +657,146 @@ class _TicketListScreenState extends State<TicketListScreen>
         return;
       }
 
-      int? agenteSeleccionado;
+      // Convertir los agentes a una lista de IDs válidos (aceptando String o int)
+      List<Map<String, dynamic>> agentesProcesados = [];
+      Set<String> idsUnicos = {};
+      for (var agente in agentes) {
+        final id = agente['id']?.toString();
+        final nombre = agente['nombre'] ?? 'Sin nombre';
+        if (id != null && id.isNotEmpty && !idsUnicos.contains(id)) {
+          agentesProcesados.add({'id': id, 'nombre': nombre});
+          idsUnicos.add(id);
+        }
+      }
+
+      String? agenteSeleccionado = null;
 
       await showDialog(
         context: context,
         builder: (BuildContext context) {
-          return AlertDialog(
-            title: Row(
-              children: [
-                Icon(Icons.swap_horiz, color: primaryColor),
-                const SizedBox(width: 8),
-                Text(
-                  'Reasignar Ticket',
-                  style: TextStyle(
-                    color: Colors.grey[800],
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            content: StatefulBuilder(
-              builder: (context, setState) {
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
+          return StatefulBuilder(
+            builder: (context, setDialogState) {
+              return AlertDialog(
+                title: Row(
                   children: [
-                    DropdownButtonFormField<int>(
-                      value: agenteSeleccionado,
-                      decoration: InputDecoration(
-                        labelText: 'Selecciona un agente',
-                        prefixIcon:
-                            Icon(Icons.support_agent, color: primaryColor),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Colors.grey[300]!),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Colors.grey[300]!),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: primaryColor, width: 2),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey[100],
+                    Icon(Icons.swap_horiz, color: primaryColor),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Reasignar Ticket',
+                      style: TextStyle(
+                        color: Colors.grey[800],
+                        fontWeight: FontWeight.bold,
                       ),
-                      items: agentes.map<DropdownMenuItem<int>>((agente) {
-                        return DropdownMenuItem<int>(
-                          value: agente['id'],
-                          child: Text(agente['nombre']),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          agenteSeleccionado = value;
-                        });
-                      },
                     ),
                   ],
-                );
-              },
-            ),
-            actions: [
-              TextButton.icon(
-                onPressed: () => Navigator.pop(context),
-                icon: Icon(Icons.close, color: Colors.grey[600]),
-                label: Text(
-                  'Cancelar',
-                  style: TextStyle(color: Colors.grey[600]),
                 ),
-              ),
-              ElevatedButton.icon(
-                onPressed: () async {
-                  if (agenteSeleccionado == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('❌ Debes seleccionar un agente'),
-                        backgroundColor: Colors.red,
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      constraints: BoxConstraints(maxHeight: 300),
+                      child: DropdownButtonFormField<String>(
+                        value: agenteSeleccionado,
+                        decoration: InputDecoration(
+                          labelText: 'Selecciona un agente',
+                          prefixIcon:
+                              Icon(Icons.support_agent, color: primaryColor),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: primaryColor, width: 2),
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey[100],
+                        ),
+                        items: [
+                          DropdownMenuItem<String>(
+                            value: null,
+                            child: Text('Selecciona un agente'),
+                          ),
+                          ...agentesProcesados.map<DropdownMenuItem<String>>((agente) {
+                            return DropdownMenuItem<String>(
+                              value: agente['id'],
+                              child: Text(agente['nombre']),
+                            );
+                          }).toList(),
+                        ],
+                        onChanged: (value) {
+                          setDialogState(() {
+                            agenteSeleccionado = value;
+                          });
+                        },
                       ),
-                    );
-                    return;
-                  }
-
-                  try {
-                    setState(() => isLoading = true);
-                    await widget.apiService
-                        .reasignarTicket(ticketId, agenteSeleccionado!);
-                    Navigator.pop(context);
-                    _refreshTickets();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('✅ Ticket reasignado con éxito'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  } catch (e) {
-                    print("❌ Error al reasignar ticket: $e");
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('❌ Error al reasignar el ticket'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  } finally {
-                    setState(() => isLoading = false);
-                  }
-                },
-                icon: Icon(Icons.check),
-                label: Text('Reasignar'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryColor,
-                  foregroundColor: secondaryColor,
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton.icon(
+                    onPressed: () => Navigator.pop(context),
+                    icon: Icon(Icons.close, color: Colors.grey[600]),
+                    label: Text(
+                      'Cancelar',
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
                   ),
-                  elevation: 4,
-                ),
-              ),
-            ],
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      if (agenteSeleccionado == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('❌ Debes seleccionar un agente'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
+
+                      try {
+                        setState(() => isLoading = true);
+                        await widget.apiService
+                            .reasignarTicket(ticketId, agenteSeleccionado!);
+                        Navigator.pop(context);
+                        _refreshTickets();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('✅ Ticket reasignado con éxito'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      } catch (e) {
+                        print("❌ Error al reasignar ticket: $e");
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('❌ Error al reasignar el ticket'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      } finally {
+                        setState(() => isLoading = false);
+                      }
+                    },
+                    icon: Icon(Icons.check),
+                    label: Text('Reasignar'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: secondaryColor,
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      elevation: 4,
+                    ),
+                  ),
+                ],
+              );
+            },
           );
         },
       );
@@ -760,7 +813,7 @@ class _TicketListScreenState extends State<TicketListScreen>
     }
   }
 
-  Future<void> _seleccionarArchivo(int ticketId) async {
+  Future<void> _seleccionarArchivo(String ticketId) async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         allowMultiple: true,
@@ -836,15 +889,20 @@ class _TicketListScreenState extends State<TicketListScreen>
   void _handleMenuSelection(String value, dynamic ticket) {
     switch (value) {
       case 'assign':
-        _mostrarDialogoAsignar(ticket['id']);
+        _mostrarDialogoAsignar(ticket['id'].toString());
         break;
       case 'reasign':
         if (ticket['id_departamento'] != null) {
-          _mostrarDialogoReasignar(ticket['id'], ticket['id_departamento']);
+          _mostrarDialogoReasignar(
+            ticket['id'].toString(),
+            ticket['id_departamento'] is int
+                ? ticket['id_departamento']
+                : int.tryParse(ticket['id_departamento'].toString()) ?? -1
+          );
         }
         break;
       case 'upload':
-        _seleccionarArchivo(ticket['id']);
+        _seleccionarArchivo(ticket['id'].toString());
         break;
       case 'edit':
         Navigator.push(
@@ -857,7 +915,7 @@ class _TicketListScreenState extends State<TicketListScreen>
         });
         break;
       case 'delete':
-        _deleteTicket(ticket['id']);
+        _deleteTicket(ticket['id'].toString());
         break;
     }
   }
@@ -1010,7 +1068,7 @@ class _TicketListScreenState extends State<TicketListScreen>
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
-                                      "#${ticket['id']}",
+                                      "#${ticket['id_formatted']}",
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         color: Colors.green[900],
@@ -1115,15 +1173,15 @@ class _TicketListScreenState extends State<TicketListScreen>
     IconData statusIcon;
 
     switch (estado) {
-      case 'Abierto':
+      case 'ABIERTO':
         chipColor = Colors.green;
         statusIcon = Icons.check_circle;
         break;
-      case 'En Proceso':
+      case 'EN PROCESO':
         chipColor = Colors.orange;
         statusIcon = Icons.pending;
         break;
-      case 'Cerrado':
+      case 'CERRADO':
         chipColor = Colors.red;
         statusIcon = Icons.cancel;
         break;
@@ -1145,11 +1203,11 @@ class _TicketListScreenState extends State<TicketListScreen>
 
   Color _getStatusColor(String estado) {
     switch (estado) {
-      case 'Abierto':
+      case 'ABIERTO':
         return Colors.green.shade50;
-      case 'En Proceso':
+      case 'EN PROCESO':
         return Colors.orange.shade50;
-      case 'Cerrado':
+      case 'CERRADO':
         return Colors.red.shade50;
       default:
         return Colors.grey.shade50;
@@ -1741,11 +1799,11 @@ class _TicketListScreenState extends State<TicketListScreen>
   // Nuevo: función para obtener color según estado para los chips
   Color _chipColorEstado(String estado) {
     switch (estado) {
-      case 'Abierto':
+      case 'ABIERTO':
         return Colors.green;
-      case 'En Proceso':
+      case 'EN PROCESO':
         return Colors.orange;
-      case 'Cerrado':
+      case 'CERRADO':
         return Colors.red;
       default:
         return primaryColor;
@@ -1753,8 +1811,13 @@ class _TicketListScreenState extends State<TicketListScreen>
   }
 
   String formatearComoChile(String fechaStr) {
-    final fechaConOffset = fechaStr.replaceFirst(' ', 'T') + '-04:00';
-    final dt = DateTime.parse(fechaConOffset);
+    if (fechaStr.isEmpty) return '';
+    DateTime dt;
+    if (fechaStr.contains('+') || fechaStr.contains('-')) {
+      dt = DateTime.parse(fechaStr.replaceFirst(' ', 'T'));
+    } else {
+      dt = DateTime.parse(fechaStr.replaceFirst(' ', 'T') + '-04:00');
+    }
     return '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
            '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
   }

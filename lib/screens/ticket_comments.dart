@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 
 class TicketCommentsScreen extends StatefulWidget {
-  final int ticketId;
+  final String ticketId;
   final String ticketTitulo;
   final ApiService apiService = ApiService();
 
@@ -78,13 +78,13 @@ class _TicketCommentsScreenState extends State<TicketCommentsScreen>
     try {
       // Agregar el comentario
       await widget.apiService.agregarComentario(
-        widget.ticketId,
+        widget.ticketId.toString(),
         _comentarioController.text,
       );
 
       // Cambiar el estado del ticket a "En Proceso"
       await widget.apiService
-          .cambiarEstadoTicket(widget.ticketId, "En Proceso");
+          .cambiarEstadoTicket(widget.ticketId.toString(), "En Proceso");
 
       _comentarioController.clear();
       setState(() {

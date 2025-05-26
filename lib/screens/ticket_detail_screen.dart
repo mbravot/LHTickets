@@ -71,7 +71,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
   }
 
   Future<List<dynamic>> _cargarComentarios() async {
-    return await widget.apiService.obtenerComentarios(ticket['id']);
+    return await widget.apiService.obtenerComentarios(ticket['id'].toString());
   }
 
   void _agregarComentario() async {
@@ -80,14 +80,14 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
     try {
       // Agregar el comentario
       await widget.apiService
-          .agregarComentario(ticket['id'], _comentarioController.text);
+          .agregarComentario(ticket['id'].toString(), _comentarioController.text);
 
       // Cambiar el estado del ticket a "En Proceso"
-      await widget.apiService.cambiarEstadoTicket(ticket['id'], "En Proceso");
+      await widget.apiService.cambiarEstadoTicket(ticket['id'].toString(), "EN PROCESO");
 
       // Actualizar el estado localmente
       setState(() {
-        ticket['estado'] = "En Proceso";
+        ticket['estado'] = "EN PROCESO";
       });
 
       _comentarioController.clear();
@@ -98,7 +98,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content:
-              Text('✅ Comentario agregado y ticket actualizado a "En Proceso"'),
+              Text('✅ Comentario agregado y ticket actualizado a "EN PROCESO"'),
           backgroundColor: Colors.green,
         ),
       );
@@ -116,9 +116,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
     }
   }
 
-  void _cambiarEstadoTicket(int ticketId, String nuevoEstado) async {
+  void _cambiarEstadoTicket(String ticketId, String nuevoEstado) async {
     try {
-      await widget.apiService.cambiarEstadoTicket(ticketId, nuevoEstado);
+      await widget.apiService.cambiarEstadoTicket(ticketId.toString(), nuevoEstado);
       setState(() {
         ticket['estado'] = nuevoEstado; // Actualizar estado localmente
       });
@@ -190,9 +190,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
     }
 
     try {
-      await widget.apiService.cerrarTicket(ticket['id'], comentario);
+      await widget.apiService.cerrarTicket(ticket['id'].toString(), comentario);
       setState(() {
-        ticket['estado'] = "Cerrado"; // Actualiza el estado localmente
+        ticket['estado'] = "CERRADO"; // Actualiza el estado localmente
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -298,11 +298,11 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
 
   Color _getStatusColor(String estado) {
     switch (estado) {
-      case 'Abierto':
+      case 'ABIERTO':
         return Colors.green;
-      case 'En Proceso':
+      case 'EN PROCESO':
         return Colors.orange;
-      case 'Cerrado':
+      case 'CERRADO':
         return Colors.red;
       default:
         return Colors.grey;
@@ -377,9 +377,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                   child: Row(
                     children: [
                       Icon(
-                        ticket['estado'] == 'Abierto'
+                        ticket['estado'] == 'ABIERTO'
                             ? Icons.check_circle
-                            : ticket['estado'] == 'En Proceso'
+                            : ticket['estado'] == 'EN PROCESO'
                                 ? Icons.pending
                                 : Icons.cancel,
                         color: Colors.white,
@@ -400,7 +400,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'ID: #${ticket['id']}',
+                              'ID: #${ticket['id'].toString()}',
                               style: TextStyle(
                                 color: Colors.white70,
                                 fontSize: 14,
@@ -439,7 +439,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                         ],
                       ),
                       const Divider(height: 24),
-                      _buildInfoRow(Icons.confirmation_number, "ID", "#${ticket['id']}"),
+                      _buildInfoRow(Icons.confirmation_number, "ID", "#${ticket['id'].toString()}"),
                       _buildInfoRow(Icons.title, "Título", ticket['titulo'] ?? 'Sin título'),
                       _buildInfoRow(Icons.person, "Creado por", ticket['usuario']),
                       _buildInfoRow(Icons.support_agent, "Agente",
@@ -514,7 +514,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                         ),
                         const Divider(height: 16),
                         ...((ticket['adjunto'] is String && ticket['adjunto'].isNotEmpty)
-                            ? ticket['adjunto'].split(',').where((a) => a is String && a.isNotEmpty).toList()
+                            ? List<String>.from((ticket['adjunto'] as String).split(',')).where((String a) => a.isNotEmpty).toList()
                             : <String>[])
                             .map<Widget>((file) => Row(
                               children: [
@@ -561,10 +561,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                     ) ?? false;
                                     if (confirmar) {
                                       try {
-                                        await widget.apiService.eliminarAdjunto(ticket['id'], file);
+                                        await widget.apiService.eliminarAdjunto(ticket['id'].toString(), file);
                                         setState(() {
                                           final adjuntos = (ticket['adjunto'] is String && ticket['adjunto'].isNotEmpty)
-                                              ? ticket['adjunto'].split(',').where((a) => a is String && a.isNotEmpty).toList()
+                                              ? List<String>.from((ticket['adjunto'] as String).split(',')).where((String a) => a.isNotEmpty).toList()
                                               : <String>[];
                                           adjuntos.remove(file);
                                           ticket['adjunto'] = adjuntos.join(',');
@@ -723,6 +723,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                       // Campo para agregar comentarios
                       TextField(
                         controller: _comentarioController,
+                        minLines: 1,
+                        maxLines: 5,
+                        textInputAction: TextInputAction.newline,
                         decoration: InputDecoration(
                           hintText: "Escribe un comentario...",
                           filled: true,
@@ -746,9 +749,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                             tooltip: 'Enviar comentario',
                           ),
                         ),
-                        onSubmitted: (value) {
-                          _agregarComentario();
-                        },
+                        keyboardType: TextInputType.multiline,
                       ),
                     ],
                   ),
@@ -758,13 +759,13 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
               const SizedBox(height: 24),
 
               // Botones de acción
-              if (ticket['estado'] == "Abierto")
+                if (ticket['estado'] == "ABIERTO")
                 Center(
                   child: SizedBox(
                     width: MediaQuery.of(context).size.width * 0.7,
                     child: ElevatedButton.icon(
                       onPressed: () =>
-                          _cambiarEstadoTicket(ticket['id'], "En Proceso"),
+                          _cambiarEstadoTicket(ticket['id'].toString(), "EN PROCESO"),
                       icon: Icon(Icons.pending),
                       label: Text("Cambiar a En Proceso"),
                       style: ElevatedButton.styleFrom(
@@ -780,7 +781,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                   ),
                 ),
 
-              if (ticket['estado'] == "En Proceso")
+              if (ticket['estado'] == "EN PROCESO")
                 Center(
                   child: SizedBox(
                     width: MediaQuery.of(context).size.width * 0.7,
@@ -841,7 +842,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
     // Obtener comentarios
     List<dynamic> comentariosList = [];
     try {
-      comentariosList = await widget.apiService.obtenerComentarios(ticket['id']);
+      comentariosList = await widget.apiService.obtenerComentarios(ticket['id'].toString());
     } catch (e) {
       comentariosList = [];
     }
@@ -866,7 +867,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                 children: [
                   pw.Text('Estado: ${ticket['estado']}', style: pw.TextStyle(color: PdfColor.fromInt(0xFFFFFFFF), fontWeight: pw.FontWeight.bold, fontSize: 16)),
                   pw.SizedBox(width: 16),
-                  pw.Text('ID: #${ticket['id']}', style: pw.TextStyle(color: PdfColor.fromInt(0xFFFFFFFF), fontSize: 14)),
+                  pw.Text('ID: #${ticket['id'].toString()}', style: pw.TextStyle(color: PdfColor.fromInt(0xFFFFFFFF), fontSize: 14)),
                 ],
               ),
             ),
@@ -1005,8 +1006,13 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
   }
 
   String formatearComoChile(String fechaStr) {
-    final fechaConOffset = fechaStr.replaceFirst(' ', 'T') + '-04:00';
-    final dt = DateTime.parse(fechaConOffset);
+    if (fechaStr.isEmpty) return '';
+    DateTime dt;
+    if (fechaStr.contains('+') || fechaStr.contains('-')) {
+      dt = DateTime.parse(fechaStr.replaceFirst(' ', 'T'));
+    } else {
+      dt = DateTime.parse(fechaStr.replaceFirst(' ', 'T') + '-04:00');
+    }
     return '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
            '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
   }

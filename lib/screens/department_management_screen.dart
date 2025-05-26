@@ -152,27 +152,79 @@ class _DepartmentManagementScreenState extends State<DepartmentManagementScreen>
                 ),
                 IconButton(
                   icon: Icon(Icons.edit, color: primaryColor),
-                  onPressed: () {
-                    // TODO: Implementar edición de departamento
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('🚧 Función en desarrollo'),
-                        backgroundColor: Colors.orange,
+                  onPressed: () async {
+                    final TextEditingController _editController = TextEditingController(text: departamento['nombre']);
+                    final result = await showDialog<String>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Text('Editar Departamento'),
+                        content: TextField(
+                          controller: _editController,
+                          decoration: InputDecoration(labelText: 'Nombre'),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: Text('Cancelar', style: TextStyle(color: Colors.red)),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => Navigator.of(context).pop(_editController.text),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                            child: Text('Editar', style: TextStyle(color: Colors.white)),
+                          ),
+                        ],
                       ),
                     );
+                    if (result != null && result.trim().isNotEmpty && result != departamento['nombre']) {
+                      try {
+                        await apiService.editarDepartamento(departamento['id'], result.trim());
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('✅ Departamento actualizado'), backgroundColor: Colors.green),
+                        );
+                        _loadDepartamentos();
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('❌ Error al editar: $e'), backgroundColor: Colors.red),
+                        );
+                      }
+                    }
                   },
                   tooltip: 'Editar departamento',
                 ),
                 IconButton(
                   icon: Icon(Icons.delete, color: Colors.red),
-                  onPressed: () {
-                    // TODO: Implementar eliminación de departamento
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('🚧 Función en desarrollo'),
-                        backgroundColor: Colors.orange,
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Text('Eliminar Departamento'),
+                        content: Text('¿Estás seguro de eliminar este departamento?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: Text('Cancelar', style: TextStyle(color: Colors.green)),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                            child: Text('Eliminar', style: TextStyle(color: Colors.white)),
+                          ),
+                        ],
                       ),
                     );
+                    if (confirm == true) {
+                      try {
+                        await apiService.eliminarDepartamento(departamento['id']);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('✅ Departamento eliminado'), backgroundColor: Colors.green),
+                        );
+                        _loadDepartamentos();
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('❌ Error al eliminar: $e'), backgroundColor: Colors.red),
+                        );
+                      }
+                    }
                   },
                   tooltip: 'Eliminar departamento',
                 ),

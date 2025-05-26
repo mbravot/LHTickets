@@ -67,16 +67,11 @@ class SessionService {
     // Si ha pasado más tiempo que TOKEN_REFRESH_TIME, renovar el token
     if (elapsedTime > TOKEN_REFRESH_TIME) {
       try {
-        // Obtener el token actual
-        final currentToken = prefs.getString('jwt_token');
-        if (currentToken != null && currentToken.isNotEmpty) {
-          // Intentar renovar el token
-          final refreshedToken = await _apiService.refreshToken(currentToken);
-
-          // Actualizar el token y el tiempo de inicio de sesión
+        final refreshToken = prefs.getString('refresh_token');
+        if (refreshToken != null && refreshToken.isNotEmpty) {
+          final refreshedToken = await _apiService.refreshToken(refreshToken);
           await prefs.setString('jwt_token', refreshedToken);
           await prefs.setInt('session_start_time', currentTime);
-
           print('✅ Token renovado automáticamente');
         }
       } catch (e) {
@@ -117,18 +112,14 @@ class SessionService {
   }
 
   // Guardar token de sesión
-  Future<void> saveSession(String token, Map<String, dynamic> userData) async {
+  Future<void> saveSession(String accessToken, String refreshToken, Map<String, dynamic> userData) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('jwt_token', token);
+    await prefs.setString('jwt_token', accessToken);
+    await prefs.setString('refresh_token', refreshToken);
     await prefs.setString('user_role', userData['id_rol'].toString());
     await prefs.setString('nombre_usuario', userData['nombre']);
     await prefs.setString('user_id', userData['id'].toString());
-
-    // Guardar timestamp de inicio de sesión
-    await prefs.setInt(
-        'session_start_time', DateTime.now().millisecondsSinceEpoch);
-
-    // Reiniciar el temporizador de renovación
+    await prefs.setInt('session_start_time', DateTime.now().millisecondsSinceEpoch);
     _startTokenRefreshTimer();
   }
 
@@ -183,8 +174,13 @@ class SessionService {
     await prefs.clear();
   }
 
-  Future<String?> getToken() async {
+  Future<String?> getAccessToken() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('token');
+    return prefs.getString('jwt_token');
+  }
+
+  Future<String?> getRefreshToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('refresh_token');
   }
 }
