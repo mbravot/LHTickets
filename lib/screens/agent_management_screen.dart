@@ -214,7 +214,7 @@ class _AgentManagementScreenState extends State<AgentManagementScreen>
                               labelStyle: TextStyle(color: primaryColor),
                             )).toList(),
                           ),
-                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -257,8 +257,8 @@ class _AgentManagementScreenState extends State<AgentManagementScreen>
                                           }
                                         });
                                       },
-                                    );
-                                  }).toList(),
+                    );
+                  }).toList(),
                                 ),
                               );
                             },

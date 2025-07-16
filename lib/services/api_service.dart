@@ -4,7 +4,9 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  final String baseUrl = 'https://api.lahornilla.cl/api'; //Ruta API
+  final String baseUrl = 'https://apilhtickets-927498545444.us-central1.run.app/api'; //Ruta API
+  //final String baseUrl = 'http://192.168.1.60:8080/api'; //Ruta API
+  //final String baseUrl = 'https://api.lahornilla.cl/api'; //Ruta API
 
   // 🔹 Obtener token guardado en SharedPreferences
   Future<String?> _getToken() async {
@@ -21,7 +23,18 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body); // ✅ Retornar los datos correctamente
+      final data = jsonDecode(response.body);
+      // Asegurarse de que la respuesta incluya la sucursal activa
+      if (data['usuario'] != null) {
+        // Obtener la sucursal de la estructura anidada
+        final sucursalActiva = data['usuario']['sucursal_activa'];
+        if (sucursalActiva != null && sucursalActiva['nombre'] != null) {
+          data['usuario']['sucursal'] = sucursalActiva['nombre'];
+        } else {
+          data['usuario']['sucursal'] = 'No asignada';
+        }
+      }
+      return data;
     } else {
       throw Exception('Error en el login: ${response.body}');
     }
@@ -89,7 +102,7 @@ class ApiService {
     }
   }
 
-  // 🔹 Obtener usuarios activos
+// 🔹 Obtener usuarios activos
   Future<List<dynamic>> getUsuariosActivos() async {
     final response = await protectedRequest(
       (token) => http.get(
@@ -99,12 +112,12 @@ class ApiService {
           'Content-Type': 'application/json',
         },
       ),
-    );
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else {
-      throw Exception("Error al obtener usuarios activos");
-    }
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception("Error al obtener usuarios activos");
+      }
   }
 
   // 🔹 Obtener todos los usuarios (activos e inactivos)
@@ -137,10 +150,10 @@ class ApiService {
     final response = await protectedRequest(
       (token) => http.get(
         Uri.parse('$baseUrl/tickets'),
-        headers: {
-          'Authorization': 'Bearer $token',
+      headers: {
+        'Authorization': 'Bearer $token',
           'Accept': 'application/json'
-        },
+      },
       ),
     );
     if (response.statusCode == 200) {
@@ -153,14 +166,16 @@ class ApiService {
           'descripcion': ticket['descripcion']?.toString() ?? 'Sin descripción',
           'estado': ticket['estado']?.toString() ?? 'ABIERTO',
           'prioridad': ticket['prioridad']?.toString() ?? 'Normal',
-          'departamento': ticket['departamento']?.toString() ?? 'Sin departamento',
+          'departamento': ticket['departamento'],
           'agente': ticket['agente']?.toString() ?? 'Sin asignar',
           'usuario': ticket['usuario']?.toString() ?? 'Usuario desconocido',
           'creado': ticket['fecha_creacion']?.toString() ?? '',
           'id_usuario': ticket['id_usuario']?.toString() ?? '',
           'id_agente': ticket['id_agente']?.toString(),
           'id_departamento': ticket['id_departamento']?.toString(),
+          'id_estado': ticket['id_estado'],
           'adjunto': ticket['adjunto']?.toString() ?? '',
+          'sucursal': ticket['sucursal'],
         };
       }).toList();
     } else {
@@ -228,8 +243,8 @@ class ApiService {
   Future<List<dynamic>> getPrioridades() async {
     final response = await protectedRequest(
       (token) => http.get(
-        Uri.parse('$baseUrl/prioridades'),
-        headers: {'Authorization': 'Bearer $token'},
+      Uri.parse('$baseUrl/prioridades'),
+      headers: {'Authorization': 'Bearer $token'},
       ),
     );
     if (response.statusCode == 200) {
@@ -243,8 +258,8 @@ class ApiService {
   Future<List<dynamic>> getDepartamentos() async {
     final response = await protectedRequest(
       (token) => http.get(
-        Uri.parse('$baseUrl/departamentos'),
-        headers: {'Authorization': 'Bearer $token'},
+      Uri.parse('$baseUrl/departamentos'),
+      headers: {'Authorization': 'Bearer $token'},
       ),
     );
     if (response.statusCode == 200) {
@@ -315,7 +330,7 @@ class ApiService {
     final response = await protectedRequest(
       (token) => http.get(
         Uri.parse('$baseUrl/usuarios/estados'),
-        headers: {'Authorization': 'Bearer $token'},
+      headers: {'Authorization': 'Bearer $token'},
       ),
     );
     if (response.statusCode == 200) {
@@ -387,7 +402,7 @@ class ApiService {
     final response = await protectedRequest(
       (token) => http.get(
         Uri.parse('$baseUrl/agentes'),
-        headers: {'Authorization': 'Bearer $token'},
+      headers: {'Authorization': 'Bearer $token'},
       ),
     );
     if (response.statusCode == 200) {
@@ -408,7 +423,7 @@ class ApiService {
     final response = await protectedRequest(
       (token) => http.get(
         Uri.parse('$baseUrl/agentes/departamentos'),
-        headers: {'Authorization': 'Bearer $token'},
+      headers: {'Authorization': 'Bearer $token'},
       ),
     );
     if (response.statusCode == 200) {
@@ -428,11 +443,11 @@ class ApiService {
           'Content-Type': 'application/json',
         },
       ),
-    );
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else {
-      throw Exception("Error al obtener sucursales");
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception("Error al obtener sucursales");
     }
   }
 
@@ -446,11 +461,11 @@ class ApiService {
           'Content-Type': 'application/json',
         },
       ),
-    );
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else {
-      throw Exception("Error al obtener roles");
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception("Error al obtener roles");
     }
   }
 
@@ -491,9 +506,9 @@ class ApiService {
       // Agregar el archivo como multipart
       request.files.add(
         http.MultipartFile.fromBytes(
-          'file',
-          archivoBytes,
-          filename: fileName,
+        'file',
+        archivoBytes,
+        filename: fileName,
         ),
       );
 
@@ -555,7 +570,7 @@ class ApiService {
     }
   }
 
-  // Metodo para agregar comentario al ticket
+// Metodo para agregar comentario al ticket
   Future<void> agregarComentario(String ticketId, String comentario) async {
     String? token = await _getToken();
     if (token == null) throw Exception('Token no encontrado');
@@ -574,7 +589,7 @@ class ApiService {
     }
   }
 
-  // Metodo para cambiar estado al ticket
+// Metodo para cambiar estado al ticket
   Future<void> cambiarEstadoTicket(String ticketId, String nuevoEstado) async {
     final prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('jwt_token');
@@ -593,7 +608,7 @@ class ApiService {
     }
   }
 
-  // Metodo para obtener comentario al ticket
+// Metodo para obtener comentario al ticket
   Future<List<dynamic>> obtenerComentarios(String ticketId) async {
     String? token = await _getToken();
     if (token == null) throw Exception('Token no encontrado');
@@ -610,7 +625,7 @@ class ApiService {
     }
   }
 
-  // Metodo para cambiar la clave
+// Metodo para cambiar la clave
   Future<void> cambiarClave(
       String userId, String oldPassword, String newPassword) async {
     String? token = await _getToken();
@@ -643,7 +658,7 @@ class ApiService {
     };
   }
 
-  // Metodo para eliminar usuarios
+// Metodo para eliminar usuarios
   Future<void> deleteUser(String userId) async {
     final String url = '$baseUrl/usuarios/$userId';
 
@@ -665,7 +680,7 @@ class ApiService {
     final response = await protectedRequest(
       (token) => http.get(
         Uri.parse('$baseUrl/departamentos/$departamentoId/agentes'),
-        headers: {'Authorization': 'Bearer $token'},
+      headers: {'Authorization': 'Bearer $token'},
       ),
     );
     print("🔹 Respuesta de la API: ${response.body}");
@@ -679,7 +694,7 @@ class ApiService {
     }
   }
 
-  // ✅ Función para reasignar ticket
+// ✅ Función para reasignar ticket
   Future<void> reasignarTicket(String ticketId, String nuevoAgenteId) async {
     final prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('jwt_token');
@@ -874,20 +889,69 @@ class ApiService {
     }
   }
 
+  // Método para hacer peticiones autenticadas
+  Future<dynamic> _makeAuthenticatedRequest(String method, String endpoint) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token');
+    if (token == null) throw Exception('Token no encontrado');
+
+    final response = await http.get(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Error en la petición: ${response.body}');
+    }
+  }
+
   // 🔹 Asignar un departamento a un agente
   Future<void> asignarDepartamento(String agenteId, int departamentoId) async {
-    final response = await protectedRequest(
-      (token) => http.put(
-        Uri.parse('$baseUrl/agentes/$agenteId/departamentos'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: json.encode({'id_departamento': departamentoId}),
-      ),
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token');
+    if (token == null) throw Exception('Token no encontrado');
+
+    final response = await http.put(
+      Uri.parse('$baseUrl/agentes/$agenteId/departamentos'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: json.encode({'id_departamento': departamentoId}),
     );
+
     if (response.statusCode != 200) {
       throw Exception('Error al asignar departamento: ${response.body}');
+    }
+  }
+
+  Future<List<dynamic>> getCategorias(String departamentoId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token');
+      if (token == null) throw Exception('Token no encontrado');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/categorias?departamento_id=$departamentoId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Error al obtener categorías: ${response.body}');
+      }
+    } catch (e) {
+      print('Error al obtener categorías: $e');
+      rethrow;
     }
   }
 }

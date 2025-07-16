@@ -42,10 +42,16 @@ class _TicketCreateScreenState extends State<TicketCreateScreen>
     color: Colors.grey[600],
   );
 
+  // Agregar variable para almacenar las categorías disponibles
+  List<dynamic> _categorias = [];
+  String? _selectedCategoriaId;
+
   @override
   void initState() {
     super.initState();
     _fetchDropdownData();
+    // Inicialmente cargar categorías (vacías hasta que se seleccione un departamento)
+    _loadCategorias(null);
 
     // Inicializar animación
     _animationController = AnimationController(
@@ -133,6 +139,40 @@ class _TicketCreateScreenState extends State<TicketCreateScreen>
     }
   }
 
+  // Método para cargar categorías según el departamento seleccionado
+  Future<void> _loadCategorias(String? departamentoId) async {
+    if (departamentoId == null) {
+      setState(() {
+        _categorias = [];
+        _selectedCategoriaId = null;
+      });
+      return;
+    }
+    try {
+      final categorias = await apiService.getCategorias(departamentoId);
+      setState(() {
+        _categorias = categorias;
+        _selectedCategoriaId = null;
+      });
+    } catch (e) {
+      print("Error al cargar categorías: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al cargar categorías: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  // Modificar el método _onDepartamentoChanged para usar int
+  void _onDepartamentoChanged(int? value) {
+    setState(() {
+      _departamento = value;
+      // Cargar categorías al cambiar el departamento
+      if (value != null) {
+        _loadCategorias(value.toString());
+      }
+    });
+  }
+
   void _submitForm() async {
     if (_formKey.currentState!.validate() &&
         _prioridad != null &&
@@ -148,6 +188,8 @@ class _TicketCreateScreenState extends State<TicketCreateScreen>
         'id_departamento': _departamento,
         'titulo': _tituloController.text,
         'descripcion': _descripcionController.text,
+        'id_categoria': _selectedCategoriaId,
+        'id_sucursal': 1, // 🔹 Reemplazar con el ID de la sucursal activa del usuario
       };
 
       try {
@@ -307,7 +349,46 @@ class _TicketCreateScreenState extends State<TicketCreateScreen>
                       value: _departamento,
                       items: departamentos,
                       icon: Icons.business,
-                      onChanged: (v) => setState(() => _departamento = v),
+                      onChanged: _onDepartamentoChanged,
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: _selectedCategoriaId,
+                      decoration: InputDecoration(
+                        labelText: 'Categoría',
+                        prefixIcon: Icon(Icons.label, color: primaryColor),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: primaryColor, width: 2),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                      ),
+                      items: _categorias.map<DropdownMenuItem<String>>((categoria) {
+                        return DropdownMenuItem<String>(
+                          value: categoria['id'].toString(),
+                          child: Text(categoria['nombre']),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedCategoriaId = value;
+                        });
+                      },
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Por favor selecciona una categoría';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
                     _buildDropdown(
@@ -318,7 +399,7 @@ class _TicketCreateScreenState extends State<TicketCreateScreen>
                       onChanged: (v) => setState(() => _prioridad = v),
                     ),
                     const SizedBox(height: 16),
-                    _buildReadonlyField('Estado', 'Abierto', Icons.info),
+                    _buildReadonlyField('Estado', 'ABIERTO', Icons.info),
                   ],
                 ),
                 const SizedBox(height: 16),

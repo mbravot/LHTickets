@@ -338,20 +338,20 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                     child: Row(
                       children: [
                         Expanded(
-                          child: TextField(
-                            controller: _searchController,
-                            decoration: InputDecoration(
-                              hintText: 'Buscar usuario...',
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Buscar usuario...',
                               prefixIcon: Icon(Icons.search),
-                              border: OutlineInputBorder(
+                        border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            onChanged: (value) {
-                              setState(() {
-                                _searchQuery = value;
-                              });
-                            },
+                        ),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value;
+                        });
+                      },
                           ),
                         ),
                       ],

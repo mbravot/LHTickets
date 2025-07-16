@@ -36,7 +36,7 @@ class TicketListScreen extends StatefulWidget {
 
 class _TicketListScreenState extends State<TicketListScreen>
     with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+  TabController? _tabController;
   late Future<List<dynamic>> tickets;
   List<dynamic> misTickets = [];
   List<dynamic> ticketsAsignados = [];
@@ -45,10 +45,13 @@ class _TicketListScreenState extends State<TicketListScreen>
   List<dynamic> filteredTickets = [];
   List<dynamic> misTicketsAbiertos = [];
   List<dynamic> misTicketsCerrados = [];
+  List<dynamic> sucursalesAutorizadas = [];
+  List<dynamic> ticketsDepartamento = [];
 
   String? userRole;
   String? userName;
   String? userId;
+  String? userSucursal;
   bool isLoading = true;
 
   int _currentPage = 0;
@@ -95,6 +98,12 @@ class _TicketListScreenState extends State<TicketListScreen>
       userRole = sessionData['user_role'];
       userName = sessionData['nombre_usuario'] ?? "Usuario";
       userId = sessionData['user_id'];
+      userSucursal = sessionData['sucursal'] ?? 'No asignada';
+
+      // Obtener sucursales autorizadas del usuario
+      final usuario = await widget.apiService.getUsuarios();
+      final usuarioActual = usuario.firstWhere((u) => u['id'].toString() == userId, orElse: () => null);
+      sucursalesAutorizadas = usuarioActual != null ? (usuarioActual['sucursales_autorizadas'] ?? []) : [];
 
       if (userRole == null) {
         _logout();
@@ -104,11 +113,11 @@ class _TicketListScreenState extends State<TicketListScreen>
       int tabLength = userRole == "1"
           ? 5  // Mis Tickets, Asignados, Cerrados, Sin Agente, Todos
           : userRole == "2"
-              ? 3  // Mis Tickets, Asignados, Cerrados
+              ? 4  // Mis Tickets, Asignados, Cerrados, Mi Departamento
               : 1; // Solo Mis Tickets
 
       _tabController = TabController(length: tabLength, vsync: this);
-      _tabController.addListener(() {
+      _tabController?.addListener(() {
         _filterTickets(searchController.text);
       });
 
@@ -142,6 +151,34 @@ class _TicketListScreenState extends State<TicketListScreen>
       // Asegurarse de que userId sea un string para la comparación
       final String userIdStr = userId?.toString() ?? '';
       
+      // Obtener el departamento del agente (asumiendo que solo tiene uno principal)
+      final usuario = await widget.apiService.getUsuarios();
+      final usuarioActual = usuario.firstWhere((u) => u['id'].toString() == userId, orElse: () => null);
+      int? departamentoAgente;
+      if (usuarioActual != null && usuarioActual['id_departamento'] != null) {
+        if (usuarioActual['id_departamento'] is List && usuarioActual['id_departamento'].isNotEmpty) {
+          departamentoAgente = usuarioActual['id_departamento'][0] is int
+            ? usuarioActual['id_departamento'][0]
+            : int.tryParse(usuarioActual['id_departamento'][0].toString());
+        } else if (usuarioActual['id_departamento'] is int) {
+          departamentoAgente = usuarioActual['id_departamento'];
+        } else {
+          departamentoAgente = int.tryParse(usuarioActual['id_departamento'].toString());
+        }
+      }
+      print('Departamento del agente: $departamentoAgente');
+      print('Tickets recibidos:');
+      for (var t in allTickets) {
+        print('Ticket ${t['id']} - id_departamento: ${t['id_departamento']}');
+      }
+      // Filtrar tickets del departamento del agente
+      List<dynamic> nuevosTicketsDepartamento = departamentoAgente != null
+        ? allTickets.where((ticket) =>
+            ticket['id_departamento'] != null &&
+            int.tryParse(ticket['id_departamento'].toString()) == departamentoAgente
+          ).toList()
+        : [];
+      
       List<dynamic> nuevosMisTickets = allTickets
           .where((ticket) => ticket['id_usuario']?.toString() == userIdStr)
           .toList();
@@ -171,6 +208,7 @@ class _TicketListScreenState extends State<TicketListScreen>
         misTicketsCerrados = nuevosMisTicketsCerrados;
         todosLosTickets = nuevosTodosLosTickets;
         ticketsSinAgente = nuevosTicketsSinAgente;
+        ticketsDepartamento = nuevosTicketsDepartamento;
       });
 
       // Aseguramos el filtrado después del primer frame
@@ -226,7 +264,7 @@ class _TicketListScreenState extends State<TicketListScreen>
     // Determinar qué lista mostrar según el rol y la pestaña actual
     if (userRole == "1") {
       // Administrador
-      switch (_tabController.index) {
+      switch (_tabController?.index) {
         case 0: // Abiertos
           selectedList = ticketsAsignados;
           break;
@@ -235,7 +273,6 @@ class _TicketListScreenState extends State<TicketListScreen>
           break;
         case 2: // Mis Tickets
           selectedList = misTickets;
-          // Filtrar por estado si aplica
           if (misTicketsEstadoFiltro != 'TODOS') {
             selectedList = selectedList.where((ticket) => ticket['estado'] == misTicketsEstadoFiltro).toList();
           }
@@ -250,17 +287,21 @@ class _TicketListScreenState extends State<TicketListScreen>
           selectedList = ticketsAsignados;
       }
     } else if (userRole == "2") {
-      // Agente
-      switch (_tabController.index) {
+      switch (_tabController?.index) {
         case 0: // Abiertos
           selectedList = ticketsAsignados;
           break;
         case 1: // Cerrados
           selectedList = misTicketsCerrados;
           break;
-        case 2: // Mis Tickets
+        case 2: // Mi Departamento
+          selectedList = ticketsDepartamento;
+          if (misTicketsEstadoFiltro != 'TODOS') {
+            selectedList = selectedList.where((ticket) => ticket['estado'] == misTicketsEstadoFiltro).toList();
+          }
+          break;
+        case 3: // Mis Tickets
           selectedList = misTickets;
-          // Filtrar por estado si aplica
           if (misTicketsEstadoFiltro != 'TODOS') {
             selectedList = selectedList.where((ticket) => ticket['estado'] == misTicketsEstadoFiltro).toList();
           }
@@ -269,9 +310,7 @@ class _TicketListScreenState extends State<TicketListScreen>
           selectedList = ticketsAsignados;
       }
     } else {
-      // Usuario normal
       selectedList = misTickets;
-      // Filtrar por estado si aplica
       if (misTicketsEstadoFiltro != 'TODOS') {
         selectedList = selectedList.where((ticket) => ticket['estado'] == misTicketsEstadoFiltro).toList();
       }
@@ -552,10 +591,10 @@ class _TicketListScreenState extends State<TicketListScreen>
                         ),
                         ...agentesProcesados.map<DropdownMenuItem<String>>((agente) {
                           return DropdownMenuItem<String>(
-                            value: agente['id'],
-                            child: Text(agente['nombre']),
-                          );
-                        }).toList(),
+                          value: agente['id'],
+                          child: Text(agente['nombre']),
+                        );
+                      }).toList(),
                       ],
                       onChanged: (value) {
                         setState(() {
@@ -676,46 +715,46 @@ class _TicketListScreenState extends State<TicketListScreen>
         builder: (BuildContext context) {
           return StatefulBuilder(
             builder: (context, setDialogState) {
-              return AlertDialog(
-                title: Row(
-                  children: [
-                    Icon(Icons.swap_horiz, color: primaryColor),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Reasignar Ticket',
-                      style: TextStyle(
-                        color: Colors.grey[800],
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+          return AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.swap_horiz, color: primaryColor),
+                const SizedBox(width: 8),
+                Text(
+                  'Reasignar Ticket',
+                  style: TextStyle(
+                    color: Colors.grey[800],
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
+              ],
+            ),
                 content: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       constraints: BoxConstraints(maxHeight: 300),
                       child: DropdownButtonFormField<String>(
-                        value: agenteSeleccionado,
-                        decoration: InputDecoration(
-                          labelText: 'Selecciona un agente',
-                          prefixIcon:
-                              Icon(Icons.support_agent, color: primaryColor),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: primaryColor, width: 2),
-                          ),
-                          filled: true,
-                          fillColor: Colors.grey[100],
+                      value: agenteSeleccionado,
+                      decoration: InputDecoration(
+                        labelText: 'Selecciona un agente',
+                        prefixIcon:
+                            Icon(Icons.support_agent, color: primaryColor),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
                         ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: primaryColor, width: 2),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                      ),
                         items: [
                           DropdownMenuItem<String>(
                             value: null,
@@ -723,78 +762,78 @@ class _TicketListScreenState extends State<TicketListScreen>
                           ),
                           ...agentesProcesados.map<DropdownMenuItem<String>>((agente) {
                             return DropdownMenuItem<String>(
-                              value: agente['id'],
-                              child: Text(agente['nombre']),
-                            );
-                          }).toList(),
+                          value: agente['id'],
+                          child: Text(agente['nombre']),
+                        );
+                      }).toList(),
                         ],
-                        onChanged: (value) {
+                      onChanged: (value) {
                           setDialogState(() {
-                            agenteSeleccionado = value;
-                          });
-                        },
+                          agenteSeleccionado = value;
+                        });
+                      },
                       ),
                     ),
                   ],
+            ),
+            actions: [
+              TextButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: Icon(Icons.close, color: Colors.grey[600]),
+                label: Text(
+                  'Cancelar',
+                  style: TextStyle(color: Colors.grey[600]),
                 ),
-                actions: [
-                  TextButton.icon(
-                    onPressed: () => Navigator.pop(context),
-                    icon: Icon(Icons.close, color: Colors.grey[600]),
-                    label: Text(
-                      'Cancelar',
-                      style: TextStyle(color: Colors.grey[600]),
-                    ),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: () async {
-                      if (agenteSeleccionado == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('❌ Debes seleccionar un agente'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                        return;
-                      }
-
-                      try {
-                        setState(() => isLoading = true);
-                        await widget.apiService
-                            .reasignarTicket(ticketId, agenteSeleccionado!);
-                        Navigator.pop(context);
-                        _refreshTickets();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('✅ Ticket reasignado con éxito'),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      } catch (e) {
-                        print("❌ Error al reasignar ticket: $e");
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('❌ Error al reasignar el ticket'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      } finally {
-                        setState(() => isLoading = false);
-                      }
-                    },
-                    icon: Icon(Icons.check),
-                    label: Text('Reasignar'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryColor,
-                      foregroundColor: secondaryColor,
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+              ),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  if (agenteSeleccionado == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('❌ Debes seleccionar un agente'),
+                        backgroundColor: Colors.red,
                       ),
-                      elevation: 4,
-                    ),
+                    );
+                    return;
+                  }
+
+                  try {
+                    setState(() => isLoading = true);
+                    await widget.apiService
+                        .reasignarTicket(ticketId, agenteSeleccionado!);
+                    Navigator.pop(context);
+                    _refreshTickets();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('✅ Ticket reasignado con éxito'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  } catch (e) {
+                    print("❌ Error al reasignar ticket: $e");
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('❌ Error al reasignar el ticket'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  } finally {
+                    setState(() => isLoading = false);
+                  }
+                },
+                icon: Icon(Icons.check),
+                label: Text('Reasignar'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: secondaryColor,
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                ],
+                  elevation: 4,
+                ),
+              ),
+            ],
               );
             },
           );
@@ -922,8 +961,8 @@ class _TicketListScreenState extends State<TicketListScreen>
 
   Widget _buildTicketList(List<dynamic> ticketList) {
     final bool mostrarFiltroMisTickets =
-        (userRole == "1" && _tabController.index == 2) ||
-        (userRole == "2" && _tabController.index == 2) ||
+        (userRole == "1" && _tabController?.index == 2) ||
+        (userRole == "2" && (_tabController?.index == 2 || _tabController?.index == 3)) ||
         (userRole != "1" && userRole != "2");
 
     int startIndex = _currentPage * _ticketsPerPage;
@@ -935,6 +974,31 @@ class _TicketListScreenState extends State<TicketListScreen>
 
     return Column(
       children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: TextField(
+            controller: searchController,
+            decoration: InputDecoration(
+              hintText: 'Buscar tickets...',
+              prefixIcon: Icon(Icons.search, color: primaryColor),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: primaryColor, width: 2),
+              ),
+              filled: true,
+              fillColor: Colors.white,
+            ),
+            onChanged: _filterTickets,
+          ),
+        ),
         if (mostrarFiltroMisTickets)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -984,31 +1048,6 @@ class _TicketListScreenState extends State<TicketListScreen>
             ),
           )
         else ...[
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              controller: searchController,
-              decoration: InputDecoration(
-                hintText: 'Buscar tickets...',
-                prefixIcon: Icon(Icons.search, color: primaryColor),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: primaryColor, width: 2),
-                ),
-                filled: true,
-                fillColor: Colors.white,
-              ),
-              onChanged: _filterTickets,
-            ),
-          ),
           Expanded(
             child: ListView.builder(
               padding: EdgeInsets.symmetric(horizontal: 16),
@@ -1098,14 +1137,24 @@ class _TicketListScreenState extends State<TicketListScreen>
                               // Creado por y Fecha en la misma línea
                               Row(
                                 children: [
-                                  Icon(Icons.person, size: 16, color: Colors.grey[600]),
+                                  Icon(Icons.person, size: 16, color: Colors.blue),
                                   SizedBox(width: 4),
                                   Text(
-                                    "Creado por: ${ticket['usuario'] ?? 'Desconocido'}",
+                                    "Creado por: "+(ticket['usuario'] ?? 'Desconocido'),
                                     style: cardSubtitleStyle,
                                   ),
                                   SizedBox(width: 8),
-                                  Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
+                                  Icon(Icons.location_on, size: 16, color: Colors.blue),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    "Sucursal: " +
+                                      ((ticket['sucursal'] is Map && ticket['sucursal'] != null)
+                                        ? (ticket['sucursal']['nombre'] ?? 'No asignada')
+                                        : ticket['sucursal']?.toString() ?? 'No asignada'),
+                                    style: cardSubtitleStyle,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Icon(Icons.calendar_today, size: 16, color: Colors.blue),
                                   SizedBox(width: 4),
                                   Text(
                                     formatearComoChile(ticket['creado']),
@@ -1117,17 +1166,21 @@ class _TicketListScreenState extends State<TicketListScreen>
                               // Agente y Departamento en la misma línea
                               Row(
                                 children: [
-                                  Icon(Icons.support_agent, size: 16, color: Colors.grey[600]),
+                                  Icon(Icons.support_agent, size: 16, color: Colors.blue),
                                   SizedBox(width: 4),
                                   Text(
-                                    "Agente: ${ticket['agente'] ?? 'Sin asignar'}",
+                                    "Agente: "+(ticket['agente'] ?? 'Sin asignar'),
                                     style: cardSubtitleStyle,
                                   ),
                                   SizedBox(width: 8),
-                                  Icon(Icons.business, size: 16, color: Colors.grey[600]),
+                                  Icon(Icons.business, size: 16, color: Colors.blue),
                                   SizedBox(width: 4),
                                   Text(
-                                    "Depto: ${ticket['departamento'] ?? 'Sin asignar'}",
+                                    "Depto: "+(
+                                      (ticket['departamento'] is Map && ticket['departamento'] != null)
+                                        ? ticket['departamento']['nombre']
+                                        : ticket['departamento']?.toString() ?? 'Sin asignar'
+                                    ),
                                     style: cardSubtitleStyle,
                                   ),
                                 ],
@@ -1275,39 +1328,72 @@ class _TicketListScreenState extends State<TicketListScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading || _tabController == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('Cargando...'),
+          backgroundColor: primaryColor,
+        ),
+        body: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             CircleAvatar(
               backgroundColor: Colors.white.withOpacity(0.2),
               child: Icon(Icons.confirmation_number, color: Colors.white),
             ),
-            SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+            SizedBox(width: 10),
                 Text(
                   "Bienvenido, ${userName ?? 'Usuario'} 👋",
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
+                fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                Text(
-                  userRole == "1"
-                      ? "Administrador"
-                      : userRole == "2"
-                          ? "Agente"
-                          : "Usuario",
+            SizedBox(width: 10),
+            GestureDetector(
+              onTap: _cambiarSucursalActiva,
+              child: Container(
+                constraints: BoxConstraints(maxWidth: 300),
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.22),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.location_on, color: Colors.white, size: 15),
+                    SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        "Sucursal: ${userSucursal ?? 'No asignada'}",
                   style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                   ),
                 ),
+                    SizedBox(width: 2),
+                    Icon(Icons.arrow_drop_down, color: Colors.white, size: 20),
               ],
             ),
+              ),
+            ),
+            SizedBox(width: 10),
+            _buildPerfilChip(userRole),
           ],
         ),
         flexibleSpace: Container(
@@ -1366,7 +1452,7 @@ class _TicketListScreenState extends State<TicketListScreen>
               ],
             ),
             child: TabBar(
-              controller: _tabController,
+              controller: _tabController!,
               labelColor: primaryColor,
               unselectedLabelColor: Colors.grey[500],
               indicatorColor: primaryColor,
@@ -1581,6 +1667,35 @@ class _TicketListScreenState extends State<TicketListScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        Icon(Icons.apartment, color: primaryColor),
+                        SizedBox(width: 8),
+                        Text(
+                          'Mi Departamento',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        SizedBox(width: 8),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${ticketsDepartamento.length}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
                         Icon(Icons.inbox, color: primaryColor),
                         SizedBox(width: 8),
                         Text(
@@ -1767,13 +1882,7 @@ class _TicketListScreenState extends State<TicketListScreen>
         tooltip: 'Crear nuevo ticket',
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      body: isLoading
-          ? Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
-              ),
-            )
-          : _buildTicketList(filteredTickets),
+      body: _buildTicketList(filteredTickets),
     );
   }
 
@@ -1820,5 +1929,98 @@ class _TicketListScreenState extends State<TicketListScreen>
     }
     return '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
            '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _cambiarSucursalActiva() async {
+    if (sucursalesAutorizadas.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ No tienes otras sucursales autorizadas, por favor contacta a tu administrador'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final seleccion = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return SimpleDialog(
+          title: Text('Selecciona tu sucursal activa'),
+          children: sucursalesAutorizadas.map((sucursal) {
+            return SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, sucursal['id'].toString()),
+              child: Row(
+                children: [
+                  Icon(Icons.location_on, color: primaryColor),
+                  SizedBox(width: 8),
+                  Text(
+                    sucursal['nombre'],
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+
+    if (seleccion != null && seleccion != userSucursal) {
+      try {
+        setState(() => isLoading = true);
+        await widget.apiService.updateUser(userId!, {'id_sucursalactiva': seleccion});
+        setState(() {
+          userSucursal = sucursalesAutorizadas.firstWhere((s) => s['id'].toString() == seleccion)['nombre'];
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('✅ Sucursal activa actualizada'), backgroundColor: Colors.green),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Error al actualizar sucursal: $e'), backgroundColor: Colors.red),
+        );
+      } finally {
+        setState(() => isLoading = false);
+      }
+    }
+  }
+
+  Widget _buildPerfilChip(String? userRole) {
+    String label = 'Usuario';
+    IconData icon = Icons.person_outline;
+    Color color = Colors.green.shade700;
+    if (userRole == "1") {
+      label = 'Administrador';
+      icon = Icons.admin_panel_settings;
+      color = Colors.green.shade700;
+    } else if (userRole == "2") {
+      label = 'Agente';
+      icon = Icons.person;
+      color = Colors.green.shade700;
+    }
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

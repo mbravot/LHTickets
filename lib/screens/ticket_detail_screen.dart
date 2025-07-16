@@ -270,7 +270,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                 leading: Icon(Icons.attach_file),
                 title: Text(file),
                 onTap: () async {
-                  final String url = "https://api.lahornilla.cl/api/uploads/$file";
+                  final String url = "https://apilhtickets-927498545444.us-central1.run.app/api/uploads/$file";
                   if (await canLaunch(url)) {
                     await launch(url);
                   } else {
@@ -442,12 +442,17 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                       _buildInfoRow(Icons.confirmation_number, "ID", "#${ticket['id'].toString()}"),
                       _buildInfoRow(Icons.title, "Título", ticket['titulo'] ?? 'Sin título'),
                       _buildInfoRow(Icons.person, "Creado por", ticket['usuario']),
-                      _buildInfoRow(Icons.support_agent, "Agente",
-                          ticket['agente'] ?? 'Sin asignar'),
+                      _buildInfoRow(Icons.location_on, "Sucursal",
+                        (ticket['sucursal'] is Map && ticket['sucursal'] != null)
+                          ? (ticket['sucursal']['nombre'] ?? 'No asignada')
+                          : ticket['sucursal']?.toString() ?? 'No asignada'),
+                      _buildInfoRow(Icons.support_agent, "Agente", ticket['agente'] ?? 'Sin asignar'),
                       _buildInfoRow(
                           Icons.flag, "Prioridad", ticket['prioridad']),
                       _buildInfoRow(Icons.business, "Departamento",
-                          ticket['departamento']),
+                          (ticket['departamento'] is Map && ticket['departamento'] != null)
+                            ? ticket['departamento']['nombre']
+                            : ticket['departamento']?.toString() ?? 'Sin asignar'),
                       _buildInfoRow(
                           Icons.calendar_today, "Fecha", formatearComoChile(ticket['creado'])),
                     ],
@@ -523,7 +528,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                 Expanded(
                                   child: InkWell(
                                     onTap: () async {
-                                      final String url = "https://api.lahornilla.cl/api/uploads/$file";
+                                      final String url = "https://apilhtickets-927498545444.us-central1.run.app/api/uploads/$file";
                                       if (await canLaunch(url)) {
                                         await launch(url);
                                       } else {
@@ -815,7 +820,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: Colors.grey[600]),
+          Icon(icon, size: 20, color: Colors.blue),
           const SizedBox(width: 8),
           Text(
             "$label: ",
@@ -891,9 +896,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                   pw.Divider(),
                   pw.Text('Título: ${ticket['titulo'] ?? 'Sin título'}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
                   pw.Text('Creado por: ${ticket['usuario']}'),
+                  pw.Text('Sucursal: ${(ticket['sucursal'] is Map && ticket['sucursal'] != null) ? (ticket['sucursal']['nombre'] ?? 'No asignada') : ticket['sucursal']?.toString() ?? 'No asignada'}'),
                   pw.Text('Agente: ${ticket['agente'] ?? "Sin asignar"}'),
                   pw.Text('Prioridad: ${ticket['prioridad']}'),
-                  pw.Text('Departamento: ${ticket['departamento']}'),
+                  pw.Text('Departamento: ${(ticket['departamento'] is Map && ticket['departamento'] != null) ? ticket['departamento']['nombre'] : ticket['departamento']?.toString() ?? 'Sin asignar'}'),
                   pw.Text('Fecha: ${formatearComoChile(ticket['creado'])}'),
                 ],
               ),

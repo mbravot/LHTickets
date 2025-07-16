@@ -119,6 +119,7 @@ class SessionService {
     await prefs.setString('user_role', userData['id_rol'].toString());
     await prefs.setString('nombre_usuario', userData['nombre']);
     await prefs.setString('user_id', userData['id'].toString());
+    await prefs.setString('sucursal', userData['sucursal'] ?? 'No asignada');
     await prefs.setInt('session_start_time', DateTime.now().millisecondsSinceEpoch);
     _startTokenRefreshTimer();
   }
@@ -162,6 +163,7 @@ class SessionService {
       'user_role': prefs.getString('user_role'),
       'nombre_usuario': prefs.getString('nombre_usuario'),
       'user_id': prefs.getString('user_id'),
+      'sucursal': prefs.getString('sucursal'),
     };
   }
 

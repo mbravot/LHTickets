@@ -30,6 +30,7 @@ class _UserEditScreenState extends State<UserEditScreen>
   List<dynamic> colaboradores = [];
   List<dynamic> colaboradoresFiltrados = [];
   List<String> selectedDepartamentos = [];
+  List<String> selectedSucursalesAutorizadas = [];
 
   String? selectedRol;
   String? selectedSucursal;
@@ -125,6 +126,11 @@ class _UserEditScreenState extends State<UserEditScreen>
       } else {
         _colaboradorController.text = '';
       }
+      if (widget.user != null && widget.user!['sucursales_autorizadas'] != null) {
+        selectedSucursalesAutorizadas = List<String>.from(
+          widget.user!['sucursales_autorizadas'].map((s) => s['id'].toString()),
+        );
+      }
       setState(() {});
     } catch (e) {
       print("❌ Error al cargar datos: $e");
@@ -172,6 +178,7 @@ class _UserEditScreenState extends State<UserEditScreen>
           'id_departamento': selectedDepartamentos,
           'id_estado': selectedEstadoId,
           'id_colaborador': selectedColaborador != null ? int.parse(selectedColaborador!) : null,
+          'sucursales_autorizadas': selectedSucursalesAutorizadas,
         });
         // Asociar departamentos si es agente
         if (selectedRol == '2') {
@@ -225,7 +232,8 @@ class _UserEditScreenState extends State<UserEditScreen>
               ? int.parse(selectedColaborador!)
               : null;
         }
-        updatedData['id_departamento'] = selectedDepartamentos;
+          updatedData['id_departamento'] = selectedDepartamentos;
+        updatedData['sucursales_autorizadas'] = selectedSucursalesAutorizadas;
 
         if (updatedData.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -385,27 +393,27 @@ class _UserEditScreenState extends State<UserEditScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         DropdownButtonFormField<T>(
-          value: value,
-          decoration: InputDecoration(
-            labelText: label,
-            prefixIcon: Icon(icon, color: primaryColor),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: primaryColor, width: 2),
-            ),
-            filled: true,
-            fillColor: Colors.grey[100],
-          ),
-          items: items,
-          onChanged: onChanged,
+      value: value,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: primaryColor),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: primaryColor, width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.grey[100],
+      ),
+      items: items,
+      onChanged: onChanged,
           validator: isRequired ? (value) => value == null ? 'Campo requerido' : null : null,
           isExpanded: true,
           dropdownColor: Colors.white,
@@ -629,7 +637,7 @@ class _UserEditScreenState extends State<UserEditScreen>
                         SizedBox(height: 16),
                         _buildDropdownField<String>(
                           value: selectedSucursal,
-                          label: 'Sucursal',
+                          label: 'Sucursal activa',
                           icon: Icons.business_outlined,
                           items:
                               sucursales.map<DropdownMenuItem<String>>((sucursal) {
@@ -646,6 +654,27 @@ class _UserEditScreenState extends State<UserEditScreen>
                           isRequired: _isNewUser,
                         ),
                         SizedBox(height: 16),
+                        // Campo multiselección de sucursales autorizadas
+                        Text('Sucursales autorizadas', style: cardTitleStyle),
+                        ...sucursales.map((sucursal) {
+                          final id = sucursal['id'].toString();
+                          return CheckboxListTile(
+                            value: selectedSucursalesAutorizadas.contains(id),
+                            title: Text(sucursal['nombre']),
+                            onChanged: (checked) {
+                              setState(() {
+                                if (checked == true) {
+                                  if (!selectedSucursalesAutorizadas.contains(id)) {
+                                    selectedSucursalesAutorizadas.add(id);
+                                  }
+                                } else {
+                                  selectedSucursalesAutorizadas.remove(id);
+                                }
+                              });
+                            },
+                            );
+                          }).toList(),
+                        SizedBox(height: 16),
                         if (estados.isNotEmpty)
                           Row(
                             children: [
@@ -656,15 +685,15 @@ class _UserEditScreenState extends State<UserEditScreen>
                               Switch(
                                 value: selectedEstadoId == estados.first['id'].toString(),
                                 onChanged: (bool value) {
-                                  setState(() {
+                            setState(() {
                                     selectedEstadoId = value
                                         ? estados.first['id'].toString()
                                         : (estados.length > 1 ? estados[1]['id'].toString() : estados.first['id'].toString());
-                                  });
-                                },
+                            });
+                          },
                                 activeColor: primaryColor,
                               ),
-                              Text(
+                                Text(
                                 selectedEstadoId == estados.first['id'].toString()
                                     ? estados.first['nombre']
                                     : (estados.length > 1 ? estados[1]['nombre'] : estados.first['nombre']),
@@ -674,13 +703,13 @@ class _UserEditScreenState extends State<UserEditScreen>
                                       : Colors.red,
                                   fontWeight: FontWeight.bold,
                                 ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
+                        ),
                       ],
+                      ),
                     ),
                   ),
-                ),
 
                 SizedBox(height: 24),
 

@@ -185,7 +185,7 @@ class _DepartmentManagementScreenState extends State<DepartmentManagementScreen>
                       } catch (e) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('❌ Error al editar: $e'), backgroundColor: Colors.red),
-                        );
+                    );
                       }
                     }
                   },
@@ -215,14 +215,14 @@ class _DepartmentManagementScreenState extends State<DepartmentManagementScreen>
                     if (confirm == true) {
                       try {
                         await apiService.eliminarDepartamento(departamento['id']);
-                        ScaffoldMessenger.of(context).showSnackBar(
+                    ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('✅ Departamento eliminado'), backgroundColor: Colors.green),
                         );
                         _loadDepartamentos();
                       } catch (e) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('❌ Error al eliminar: $e'), backgroundColor: Colors.red),
-                        );
+                    );
                       }
                     }
                   },
