@@ -4,8 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  //final String baseUrl = 'https://apilhtickets-927498545444.us-central1.run.app/api'; //Ruta API
-  final String baseUrl = 'http://192.168.1.60:8080/api'; //Ruta API
+  final String baseUrl = 'https://apilhtickets-927498545444.us-central1.run.app/api'; //Ruta API
+  //final String baseUrl = 'http://192.168.1.60:8080/api'; //Ruta API
   //final String baseUrl = 'https://api.lahornilla.cl/api'; //Ruta API
 
   // 🔹 Obtener token guardado en SharedPreferences
