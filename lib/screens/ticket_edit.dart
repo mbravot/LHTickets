@@ -50,7 +50,7 @@ class _TicketEditScreenState extends State<TicketEditScreen>
   @override
   void initState() {
     super.initState();
-    print('DEBUG ticket recibido: ' + widget.ticket.toString());
+    // DEBUG ticket recibido
     _tituloController = TextEditingController(text: widget.ticket['titulo']);
     _descripcionController =
         TextEditingController(text: widget.ticket['descripcion']);

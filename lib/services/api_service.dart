@@ -4,8 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  final String baseUrl = 'https://apilhtickets-927498545444.us-central1.run.app/api'; //Ruta API
-  //final String baseUrl = 'http://192.168.1.60:8080/api'; //Ruta API
+  //final String baseUrl = 'https://apilhtickets-927498545444.us-central1.run.app/api'; //Ruta API
+  final String baseUrl = 'http://192.168.1.60:8080/api'; //Ruta API
   //final String baseUrl = 'https://api.lahornilla.cl/api'; //Ruta API
 
   // 🔹 Obtener token guardado en SharedPreferences
@@ -59,7 +59,6 @@ class ApiService {
         throw Exception('Error al renovar el token: ${response.body}');
       }
     } catch (e) {
-      print('❌ Error en refreshToken: $e');
       throw Exception('Error al renovar el token: $e');
     }
   }
@@ -142,7 +141,6 @@ class ApiService {
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('jwt_token');
-    print("🔹 Token eliminado al cerrar sesión"); // 🛠️ Debug
   }
 
   // 🔹 Obtener lista de tickets
@@ -292,14 +290,11 @@ class ApiService {
       );
 
       if (response.statusCode == 201) {
-        print('Departamento creado exitosamente');
+        return;
       } else {
-        // 🔹 Mejorar manejo de errores
-        print('Error del servidor: ${response.statusCode} - ${response.body}');
         throw Exception('Error al crear el departamento: ${response.body}');
       }
     } catch (e) {
-      print('Error en crearDepartamento: $e');
       throw e;
     }
   }
@@ -407,9 +402,10 @@ class ApiService {
     );
     if (response.statusCode == 200) {
       List<dynamic> agentes = json.decode(response.body);
+      // Validación silenciosa de agentes sin nombre
       for (var agente in agentes) {
         if (agente['nombre'] == null) {
-          print("⚠️ Agente sin nombre: $agente");
+          // Log silencioso para evitar sobrecarga en producción
         }
       }
       return agentes;
@@ -565,7 +561,6 @@ class ApiService {
         }
       }
     } catch (e) {
-      print('❌ Error al subir archivo $fileName: $e');
       throw Exception('Error al subir el archivo: $e');
     }
   }
@@ -667,8 +662,7 @@ class ApiService {
       headers: await getHeaders(), // ✅ Ahora funcionará correctamente
     );
 
-    print('Status: \\${response.statusCode}');
-    print('Body: \\${response.body}');
+    // Logs removidos para evitar sobrecarga en producción
 
     if (response.statusCode != 200) {
       throw Exception('Error al eliminar el usuario: \\${response.body}');
@@ -683,13 +677,10 @@ class ApiService {
       headers: {'Authorization': 'Bearer $token'},
       ),
     );
-    print("🔹 Respuesta de la API: ${response.body}");
     if (response.statusCode == 200) {
       List agentes = json.decode(response.body);
-      print("✅ Agentes obtenidos: $agentes");
       return agentes;
     } else {
-      print("❌ Error en API: ${response.body}");
       throw Exception('Error al obtener los agentes');
     }
   }
@@ -950,8 +941,134 @@ class ApiService {
         throw Exception('Error al obtener categorías: ${response.body}');
       }
     } catch (e) {
-      print('Error al obtener categorías: $e');
       rethrow;
+    }
+  }
+
+  // 🔹 Obtener todas las apps disponibles (para administradores)
+  Future<List<dynamic>> getAdminApps() async {
+    final response = await protectedRequest(
+      (token) => http.get(
+        Uri.parse('$baseUrl/admin/apps'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Error al obtener las apps: ${response.body}');
+    }
+  }
+
+  // 🔹 Crear nueva app (para administradores)
+  Future<Map<String, dynamic>> createApp(Map<String, dynamic> appData) async {
+    final response = await protectedRequest(
+      (token) => http.post(
+        Uri.parse('$baseUrl/admin/apps'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode(appData),
+      ),
+    );
+    if (response.statusCode == 201) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Error al crear la app: ${response.body}');
+    }
+  }
+
+  // 🔹 Editar app existente (para administradores)
+  Future<Map<String, dynamic>> updateApp(String appId, Map<String, dynamic> appData) async {
+    final response = await protectedRequest(
+      (token) => http.put(
+        Uri.parse('$baseUrl/admin/apps/$appId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode(appData),
+      ),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Error al actualizar la app: ${response.body}');
+    }
+  }
+
+  // 🔹 Eliminar app (para administradores)
+  Future<void> deleteApp(String appId) async {
+    final response = await protectedRequest(
+      (token) => http.delete(
+        Uri.parse('$baseUrl/admin/apps/$appId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Error al eliminar la app: ${response.body}');
+    }
+  }
+
+  // 🔹 Obtener apps de un usuario específico (para administradores)
+  Future<Map<String, dynamic>> getUsuarioAppsById(String userId) async {
+    final response = await protectedRequest(
+      (token) => http.get(
+        Uri.parse('$baseUrl/admin/usuarios/$userId/apps'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Error al obtener apps del usuario: ${response.body}');
+    }
+  }
+
+  // 🔹 Asignar apps a un usuario (para administradores)
+  Future<Map<String, dynamic>> asignarAppsUsuario(String userId, List<String> appIds) async {
+    final response = await protectedRequest(
+      (token) => http.put(
+        Uri.parse('$baseUrl/admin/usuarios/$userId/apps'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({'app_ids': appIds}),
+      ),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Error al asignar apps al usuario: ${response.body}');
+    }
+  }
+
+  // 🔹 Obtener las apps a las que tiene acceso el usuario actual
+  Future<List<dynamic>> getUsuarioApps() async {
+    final response = await protectedRequest(
+      (token) => http.get(
+        Uri.parse('$baseUrl/usuario/apps'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Error al obtener las apps del usuario: ${response.body}');
     }
   }
 }

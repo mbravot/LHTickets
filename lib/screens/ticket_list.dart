@@ -13,6 +13,7 @@ import '../services/session_service.dart';
 import 'package:file_picker/file_picker.dart';
 //import 'dart:typed_data';
 import 'department_management_screen.dart';
+import 'admin_app_management_screen.dart';
 import 'package:flutter/foundation.dart';
 //import 'package:flutter/rendering.dart' as ui;
 // Importar dart:html solo para web
@@ -132,7 +133,6 @@ class _TicketListScreenState extends State<TicketListScreen>
         filteredTickets = misTickets;
       });
     } catch (e) {
-      print("❌ Error al inicializar datos: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('❌ Error al cargar los datos: $e'),
@@ -166,11 +166,7 @@ class _TicketListScreenState extends State<TicketListScreen>
           departamentoAgente = int.tryParse(usuarioActual['id_departamento'].toString());
         }
       }
-      print('Departamento del agente: $departamentoAgente');
-      print('Tickets recibidos:');
-      for (var t in allTickets) {
-        print('Ticket ${t['id']} - id_departamento: ${t['id_departamento']}');
-      }
+      // Logs de debug removidos para producción
       // Filtrar tickets del departamento del agente
       List<dynamic> nuevosTicketsDepartamento = departamentoAgente != null
         ? allTickets.where((ticket) =>
@@ -216,7 +212,6 @@ class _TicketListScreenState extends State<TicketListScreen>
         _filterTickets(searchController.text);
       });
     } catch (e) {
-      print("❌ Error al cargar tickets: $e");
 
       if (e.toString().contains('token') ||
           e.toString().contains('autenticación')) {
@@ -639,9 +634,8 @@ class _TicketListScreenState extends State<TicketListScreen>
                         backgroundColor: Colors.green,
                       ),
                     );
-                  } catch (e) {
-                    print("❌ Error al asignar agente: $e");
-                    ScaffoldMessenger.of(context).showSnackBar(
+                      } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('❌ Error al asignar el agente'),
                         backgroundColor: Colors.red,
@@ -668,7 +662,6 @@ class _TicketListScreenState extends State<TicketListScreen>
         },
       );
     } catch (e) {
-      print("❌ Error al obtener agentes: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('❌ Error al obtener la lista de agentes'),
@@ -809,9 +802,8 @@ class _TicketListScreenState extends State<TicketListScreen>
                         backgroundColor: Colors.green,
                       ),
                     );
-                  } catch (e) {
-                    print("❌ Error al reasignar ticket: $e");
-                    ScaffoldMessenger.of(context).showSnackBar(
+                      } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('❌ Error al reasignar el ticket'),
                         backgroundColor: Colors.red,
@@ -840,7 +832,6 @@ class _TicketListScreenState extends State<TicketListScreen>
         },
       );
     } catch (e) {
-      print("❌ Error en _mostrarDialogoReasignar: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('❌ Error al obtener la lista de agentes'),
@@ -859,7 +850,7 @@ class _TicketListScreenState extends State<TicketListScreen>
       );
 
       if (result != null) {
-        print("🔍 Archivos seleccionados: ${result.files.length}");
+        // Archivos seleccionados para subir
         List<String> archivosSubidos = [];
         List<String> archivosFallidos = [];
         Set<String> archivosProcesados = {}; // Para evitar duplicados
@@ -867,12 +858,12 @@ class _TicketListScreenState extends State<TicketListScreen>
         for (var file in result.files) {
           // Verificar si el archivo ya fue procesado
           if (archivosProcesados.contains(file.name)) {
-            print("⚠️ Archivo duplicado detectado: ${file.name}");
+            // Archivo duplicado, saltar
             continue;
           }
           
           try {
-            print("📤 Procesando archivo: ${file.name}");
+            // Procesando archivo
             final bytes = file.bytes ?? (file.path != null ? await File(file.path!).readAsBytes() : null);
             
             if (bytes != null) {
@@ -883,7 +874,7 @@ class _TicketListScreenState extends State<TicketListScreen>
               final nombreBase = file.name.substring(0, file.name.lastIndexOf('.'));
               final nombreUnico = '${nombreBase}_${timestamp}.$extension';
 
-              print("📝 Subiendo archivo con nombre único: $nombreUnico");
+              // Subiendo archivo con nombre único
               await widget.apiService.subirArchivo(
                 bytes,
                 nombreUnico,
@@ -894,7 +885,7 @@ class _TicketListScreenState extends State<TicketListScreen>
               print("✅ Archivo subido exitosamente: ${file.name}");
             }
           } catch (e) {
-            print("❌ Error al subir archivo ${file.name}: $e");
+            // Error al subir archivo
             archivosFallidos.add(file.name);
           }
         }
@@ -915,7 +906,6 @@ class _TicketListScreenState extends State<TicketListScreen>
         }
       }
     } catch (e) {
-      print("❌ Error general al adjuntar archivos: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('❌ Error al adjuntar archivos: $e'),
@@ -1833,6 +1823,21 @@ class _TicketListScreenState extends State<TicketListScreen>
                     context,
                     MaterialPageRoute(
                       builder: (context) => DepartmentManagementScreen(),
+                    ),
+                  );
+                },
+              ),
+              _buildDrawerItem(
+                icon: Icons.apps,
+                title: 'Gestionar Aplicaciones',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AdminAppManagementScreen(
+                        apiService: widget.apiService,
+                        sessionService: widget.sessionService,
+                      ),
                     ),
                   );
                 },

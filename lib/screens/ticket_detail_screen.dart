@@ -270,7 +270,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                 leading: Icon(Icons.attach_file),
                 title: Text(file),
                 onTap: () async {
-                  final String url = "https://apilhtickets-927498545444.us-central1.run.app/api/uploads/$file";
+                  final String url = "http://192.168.1.60:8080/api/uploads/$file";
                   if (await canLaunch(url)) {
                     await launch(url);
                   } else {
@@ -528,7 +528,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                 Expanded(
                                   child: InkWell(
                                     onTap: () async {
-                                      final String url = "https://apilhtickets-927498545444.us-central1.run.app/api/uploads/$file";
+                                      final String url = "http://192.168.1.60:8080/api/uploads/$file";
                                       if (await canLaunch(url)) {
                                         await launch(url);
                                       } else {

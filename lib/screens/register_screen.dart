@@ -81,7 +81,6 @@ class _RegisterScreenState extends State<RegisterScreen>
         _roles = roles;
       });
     } catch (e) {
-      print("❌ Error al cargar roles: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('❌ Error al cargar los roles'),
@@ -101,7 +100,6 @@ class _RegisterScreenState extends State<RegisterScreen>
         _sucursales = sucursales;
       });
     } catch (e) {
-      print("❌ Error al cargar sucursales: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('❌ Error al cargar las sucursales'),
@@ -121,7 +119,6 @@ class _RegisterScreenState extends State<RegisterScreen>
         _colaboradores = colaboradores;
       });
     } catch (e) {
-      print("❌ Error al cargar colaboradores: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('❌ Error al cargar los colaboradores'),

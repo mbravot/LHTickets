@@ -424,7 +424,7 @@ class _LoginScreenState extends State<LoginScreen>
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Credenciales incorrectas'),
+            content: Text('Credenciales incorrectas o sin acceso a la aplicación'),
             backgroundColor: Colors.red,
           ),
         );

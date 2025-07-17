@@ -76,7 +76,6 @@ class _UserManagementScreenState extends State<UserManagementScreen>
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      print("❌ Error al cargar usuarios: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('❌ Error al cargar los usuarios'),

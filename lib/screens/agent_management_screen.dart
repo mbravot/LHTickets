@@ -72,7 +72,6 @@ class _AgentManagementScreenState extends State<AgentManagementScreen>
       usuarios = await apiService.getUsuarios();
       setState(() => _isLoading = false);
     } catch (e) {
-      print("❌ Error al cargar datos: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('❌ Error al cargar los datos'),

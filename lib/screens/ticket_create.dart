@@ -155,7 +155,6 @@ class _TicketCreateScreenState extends State<TicketCreateScreen>
         _selectedCategoriaId = null;
       });
     } catch (e) {
-      print("Error al cargar categorías: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error al cargar categorías: $e'), backgroundColor: Colors.red),
       );
@@ -214,10 +213,10 @@ class _TicketCreateScreenState extends State<TicketCreateScreen>
                   );
                   archivosSubidos.add(archivo['name']);
                 }
-              } catch (e) {
-                print("❌ Error al subir archivo ${archivo['name']}: $e");
-                archivosFallidos.add(archivo['name']);
-              }
+                      } catch (e) {
+          // Error al subir archivo
+          archivosFallidos.add(archivo['name']);
+        }
             }
 
             if (archivosSubidos.isNotEmpty) {

@@ -76,8 +76,7 @@ class _DepartmentManagementScreenState extends State<DepartmentManagementScreen>
               await apiService.getAgentesPorDepartamento(depto['id']);
           depto['agentes'] = agentes;
         } catch (e) {
-          print(
-              "❌ Error al cargar agentes del departamento ${depto['id']}: $e");
+          // Error al cargar agentes del departamento
           depto['agentes'] = [];
         }
       }
@@ -88,7 +87,7 @@ class _DepartmentManagementScreenState extends State<DepartmentManagementScreen>
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      print("❌ Error al cargar departamentos: $e");
+      // Error al cargar departamentos
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('❌ Error al cargar los departamentos'),
