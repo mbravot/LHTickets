@@ -5,8 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   final String baseUrl = 'https://apilhtickets-927498545444.us-central1.run.app/api'; //Ruta API
-  //final String baseUrl = 'http://192.168.1.60:8080/api'; //Ruta API
-  //final String baseUrl = 'https://api.lahornilla.cl/api'; //Ruta API
+  //final String baseUrl = 'http://192.168.1.37:8080/api'; //Ruta API
+
 
   // 🔹 Obtener token guardado en SharedPreferences
   Future<String?> _getToken() async {
@@ -470,6 +470,11 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('jwt_token');
 
+    // Debug temporal
+    print('🔍 DEBUG - updateUser:');
+    print('  URL: $baseUrl/usuarios/$userId');
+    print('  UserData: $userData');
+
     final response = await http.put(
       Uri.parse('$baseUrl/usuarios/$userId'),
       headers: {
@@ -478,6 +483,9 @@ class ApiService {
       },
       body: json.encode(userData),
     );
+
+    print('🔍 DEBUG - Response Status: ${response.statusCode}');
+    print('🔍 DEBUG - Response Body: ${response.body}');
 
     if (response.statusCode != 200) {
       throw Exception('Error al actualizar usuario: ${response.body}');

@@ -110,6 +110,20 @@ class _UserManagementScreenState extends State<UserManagementScreen>
   }
 
   Widget _buildUserCard(dynamic user) {
+    // Construir nombre completo
+    String nombreCompleto = user['nombre'] ?? '';
+    if (user['apellido_paterno'] != null && user['apellido_paterno'].isNotEmpty) {
+      nombreCompleto += ' ${user['apellido_paterno']}';
+    }
+    if (user['apellido_materno'] != null && user['apellido_materno'].isNotEmpty) {
+      nombreCompleto += ' ${user['apellido_materno']}';
+    }
+    
+    // Si no hay nombre, usar el usuario
+    if (nombreCompleto.trim().isEmpty) {
+      nombreCompleto = user['usuario'] ?? 'Sin nombre';
+    }
+
     return Card(
       margin: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       elevation: 4,
@@ -151,7 +165,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          user['nombre'],
+                          nombreCompleto,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -159,12 +173,21 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                           ),
                         ),
                         Text(
-                          user['correo'],
+                          user['correo'] ?? 'Sin correo',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey[600],
                           ),
                         ),
+                        if (user['usuario'] != null)
+                          Text(
+                            '@${user['usuario']}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[500],
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
                       ],
                     ),
                   ),

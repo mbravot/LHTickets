@@ -15,15 +15,16 @@ class _RegisterScreenState extends State<RegisterScreen>
   final ApiService apiService = ApiService();
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _usuarioController = TextEditingController();
+  final TextEditingController _nombreController = TextEditingController();
+  final TextEditingController _apellidoPaternoController = TextEditingController();
+  final TextEditingController _apellidoMaternoController = TextEditingController();
   final TextEditingController _correoController = TextEditingController();
   final TextEditingController _claveController = TextEditingController();
   int? _selectedRol;
   int? _selectedSucursal;
-  int? _selectedColaborador;
   bool _isLoading = false;
   List<dynamic> _roles = [];
   List<dynamic> _sucursales = [];
-  List<dynamic> _colaboradores = [];
 
   // Animación
   late AnimationController _animationController;
@@ -48,7 +49,6 @@ class _RegisterScreenState extends State<RegisterScreen>
     super.initState();
     _loadRoles();
     _loadSucursales();
-    _loadColaboradores();
 
     // Inicializar animación
     _animationController = AnimationController(
@@ -68,6 +68,9 @@ class _RegisterScreenState extends State<RegisterScreen>
   void dispose() {
     _animationController.dispose();
     _usuarioController.dispose();
+    _nombreController.dispose();
+    _apellidoPaternoController.dispose();
+    _apellidoMaternoController.dispose();
     _correoController.dispose();
     _claveController.dispose();
     super.dispose();
@@ -111,25 +114,6 @@ class _RegisterScreenState extends State<RegisterScreen>
     }
   }
 
-  Future<void> _loadColaboradores() async {
-    try {
-      setState(() => _isLoading = true);
-      List<dynamic> colaboradores = await apiService.getColaboradores();
-      setState(() {
-        _colaboradores = colaboradores;
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Error al cargar los colaboradores'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
   void _register() async {
     if (_formKey.currentState!.validate() &&
         _selectedRol != null &&
@@ -139,11 +123,15 @@ class _RegisterScreenState extends State<RegisterScreen>
       try {
         final userData = {
           'usuario': _usuarioController.text,
+          'nombre': _nombreController.text,
+          'apellido_paterno': _apellidoPaternoController.text,
+          'apellido_materno': _apellidoMaternoController.text.isNotEmpty 
+              ? _apellidoMaternoController.text 
+              : null,
           'correo': _correoController.text,
           'clave': _claveController.text,
           'id_rol': _selectedRol,
           'id_sucursalactiva': _selectedSucursal,
-          'id_colaborador': _selectedColaborador
         };
 
         await apiService.register(userData);
@@ -159,27 +147,13 @@ class _RegisterScreenState extends State<RegisterScreen>
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Error: $e'),
+            content: Text('❌ Error al registrar usuario: $e'),
             backgroundColor: Colors.red,
           ),
         );
       } finally {
         setState(() => _isLoading = false);
       }
-    } else if (_selectedRol == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Debes seleccionar un rol'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } else if (_selectedSucursal == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Debes seleccionar una sucursal'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 
@@ -189,6 +163,7 @@ class _RegisterScreenState extends State<RegisterScreen>
     IconData icon, {
     bool obscureText = false,
     TextInputType keyboardType = TextInputType.text,
+    bool isRequired = true,
   }) {
     return TextFormField(
       controller: controller,
@@ -212,302 +187,236 @@ class _RegisterScreenState extends State<RegisterScreen>
         filled: true,
         fillColor: Colors.grey[100],
       ),
-      validator: (value) => value!.isEmpty ? 'Campo requerido' : null,
-    );
-  }
-
-  Widget _buildDropdownField<T>({
-    required T? value,
-    required String label,
-    required IconData icon,
-    required List<DropdownMenuItem<T>> items,
-    required void Function(T?) onChanged,
-    bool isRequired = true,
-  }) {
-    return DropdownButtonFormField<T>(
-      value: value,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: primaryColor),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.grey[300]!),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.grey[300]!),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: primaryColor, width: 2),
-        ),
-        filled: true,
-        fillColor: Colors.grey[100],
-      ),
-      items: items,
-      onChanged: onChanged,
-      validator: isRequired ? (value) => value == null ? 'Campo requerido' : null : null,
+      validator: isRequired ? (value) {
+        return value!.isEmpty ? 'Campo requerido' : null;
+      } : null,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (widget.userRole != "1") {
-      return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 64, color: Colors.red),
-              SizedBox(height: 16),
-              Text(
-                "Acceso denegado",
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.red,
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                "Solo los administradores pueden registrar usuarios",
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-        backgroundColor: Colors.grey[100],
-      );
-    }
-
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            Icon(Icons.person_add, color: secondaryColor),
-            SizedBox(width: 8),
-            Text(
-              'Registro de Usuario',
-              style: TextStyle(
-                color: secondaryColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
+        title: Text('Registrar Usuario'),
         backgroundColor: primaryColor,
-        elevation: 4,
+        foregroundColor: secondaryColor,
+        elevation: 0,
       ),
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Tarjeta de información personal
-                Card(
-                  elevation: 4,
-                  shadowColor: Colors.black26,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.person, color: primaryColor),
-                            SizedBox(width: 8),
-                            Text(
-                              'Información Personal',
-                              style: cardTitleStyle,
-                            ),
-                          ],
-                        ),
-                        Divider(height: 24),
-                        _buildTextField(
-                          _usuarioController,
-                          'Nombre de Usuario',
-                          Icons.person_outline,
-                        ),
-                        SizedBox(height: 16),
-                        _buildTextField(
-                          _correoController,
-                          'Correo Electrónico',
-                          Icons.email_outlined,
-                          keyboardType: TextInputType.emailAddress,
-                        ),
-                        SizedBox(height: 16),
-                        _buildTextField(
-                          _claveController,
-                          'Contraseña',
-                          Icons.lock_outline,
-                          obscureText: true,
-                        ),
-                      ],
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [primaryColor.withOpacity(0.1), backgroundColor],
+          ),
+        ),
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(16),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Tarjeta de información personal
+                  Card(
+                    elevation: 4,
+                    shadowColor: Colors.black26,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.person_outline, color: primaryColor),
+                              SizedBox(width: 8),
+                              Text(
+                                'Información Personal',
+                                style: cardTitleStyle,
+                              ),
+                            ],
+                          ),
+                          Divider(height: 24),
+                          _buildTextField(
+                            _usuarioController,
+                            'Nombre de Usuario',
+                            Icons.account_circle_outlined,
+                          ),
+                          SizedBox(height: 16),
+                          _buildTextField(
+                            _nombreController,
+                            'Nombre',
+                            Icons.person_outline,
+                          ),
+                          SizedBox(height: 16),
+                          _buildTextField(
+                            _apellidoPaternoController,
+                            'Apellido Paterno',
+                            Icons.person_outline,
+                          ),
+                          SizedBox(height: 16),
+                          _buildTextField(
+                            _apellidoMaternoController,
+                            'Apellido Materno (Opcional)',
+                            Icons.person_outline,
+                            isRequired: false,
+                          ),
+                          SizedBox(height: 16),
+                          _buildTextField(
+                            _correoController,
+                            'Correo Electrónico',
+                            Icons.email_outlined,
+                            keyboardType: TextInputType.emailAddress,
+                          ),
+                          SizedBox(height: 16),
+                          _buildTextField(
+                            _claveController,
+                            'Contraseña',
+                            Icons.lock_outline,
+                            obscureText: true,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
 
-                SizedBox(height: 16),
+                  SizedBox(height: 16),
 
-                // Tarjeta de asignación
-                Card(
-                  elevation: 4,
-                  shadowColor: Colors.black26,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.assignment_ind, color: primaryColor),
-                            SizedBox(width: 8),
-                            Text(
-                              'Asignación',
-                              style: cardTitleStyle,
+                  // Tarjeta de asignación
+                  Card(
+                    elevation: 4,
+                    shadowColor: Colors.black26,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.assignment_ind, color: primaryColor),
+                              SizedBox(width: 8),
+                              Text(
+                                'Asignación',
+                                style: cardTitleStyle,
+                              ),
+                            ],
+                          ),
+                          Divider(height: 24),
+                          DropdownButtonFormField<int>(
+                            value: _selectedRol,
+                            decoration: InputDecoration(
+                              labelText: 'Rol',
+                              prefixIcon: Icon(Icons.people_outline, color: primaryColor),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: Colors.grey[300]!),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: Colors.grey[300]!),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: primaryColor, width: 2),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey[100],
                             ),
-                          ],
-                        ),
-                        Divider(height: 24),
-                        _buildDropdownField<int>(
-                          value: _selectedColaborador,
-                          label: 'Colaborador (Opcional)',
-                          icon: Icons.person_outline,
-                          items: [
-                            DropdownMenuItem<int>(
-                              value: null,
-                              child: Text('Ninguno'),
-                            ),
-                            ..._colaboradores.map<DropdownMenuItem<int>>((colaborador) {
+                            items: _roles.map<DropdownMenuItem<int>>((rol) {
                               return DropdownMenuItem<int>(
-                                value: colaborador['id'],
-                                child: Text(colaborador['nombre']),
+                                value: rol['id'],
+                                child: Text(rol['rol']),
                               );
                             }).toList(),
-                          ],
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedColaborador = value;
-                            });
-                          },
-                          isRequired: false,
-                        ),
-                        SizedBox(height: 16),
-                        _buildDropdownField<int>(
-                          value: _selectedRol,
-                          label: 'Rol',
-                          icon: Icons.people_outline,
-                          items: _roles.map<DropdownMenuItem<int>>((rol) {
-                            return DropdownMenuItem<int>(
-                              value: rol['id'],
-                              child: Text(rol['rol']),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedRol = value;
-                            });
-                          },
-                        ),
-                        SizedBox(height: 16),
-                        _buildDropdownField<int>(
-                          value: _selectedSucursal,
-                          label: 'Sucursal',
-                          icon: Icons.business_outlined,
-                          items: _sucursales.map<DropdownMenuItem<int>>((sucursal) {
-                            return DropdownMenuItem<int>(
-                              value: sucursal['id'],
-                              child: Text(sucursal['nombre']),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedSucursal = value;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                SizedBox(height: 24),
-
-                // Botón de crear usuario
-                Card(
-                  elevation: 4,
-                  shadowColor: Colors.black26,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.save_alt, color: primaryColor),
-                            SizedBox(width: 8),
-                            Text(
-                              'Guardar Usuario',
-                              style: cardTitleStyle,
-                            ),
-                          ],
-                        ),
-                        Divider(height: 24),
-                        _isLoading
-                            ? Center(
-                                child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
-                                ),
-                              )
-                            : ElevatedButton.icon(
-                                onPressed: _register,
-                                icon: Icon(Icons.person_add),
-                                label: Text(
-                                  'Crear Usuario',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: primaryColor,
-                                  foregroundColor: secondaryColor,
-                                  padding: EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  elevation: 4,
-                                  minimumSize: Size(double.infinity, 50),
-                                ),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedRol = value;
+                              });
+                            },
+                            validator: (value) {
+                              return value == null ? 'Selecciona un rol' : null;
+                            },
+                          ),
+                          SizedBox(height: 16),
+                          DropdownButtonFormField<int>(
+                            value: _selectedSucursal,
+                            decoration: InputDecoration(
+                              labelText: 'Sucursal Activa',
+                              prefixIcon: Icon(Icons.business_outlined, color: primaryColor),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: Colors.grey[300]!),
                               ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Al crear el usuario, se le enviará un correo electrónico con sus credenciales de acceso.',
-                          style: cardSubtitleStyle,
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: Colors.grey[300]!),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: primaryColor, width: 2),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey[100],
+                            ),
+                            items: _sucursales.map<DropdownMenuItem<int>>((sucursal) {
+                              return DropdownMenuItem<int>(
+                                value: sucursal['id'],
+                                child: Text(sucursal['nombre']),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedSucursal = value;
+                              });
+                            },
+                            validator: (value) {
+                              return value == null ? 'Selecciona una sucursal' : null;
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+
+                  SizedBox(height: 24),
+
+                  _isLoading
+                      ? Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                          ),
+                        )
+                      : ElevatedButton.icon(
+                          onPressed: _register,
+                          icon: Icon(Icons.person_add),
+                          label: Text(
+                            'Registrar Usuario',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: Size(double.infinity, 48),
+                            backgroundColor: primaryColor,
+                            foregroundColor: secondaryColor,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            elevation: 4,
+                          ),
+                        ),
+                ],
+              ),
             ),
           ),
         ),
