@@ -473,11 +473,6 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('jwt_token');
 
-    // Debug temporal
-    print('🔍 DEBUG - updateUser:');
-    print('  URL: $baseUrl/usuarios/$userId');
-    print('  UserData: $userData');
-
     final response = await http.put(
       Uri.parse('$baseUrl/usuarios/$userId'),
       headers: {
@@ -486,9 +481,6 @@ class ApiService {
       },
       body: json.encode(userData),
     );
-
-    print('🔍 DEBUG - Response Status: ${response.statusCode}');
-    print('🔍 DEBUG - Response Body: ${response.body}');
 
     if (response.statusCode != 200) {
       throw Exception('Error al actualizar usuario: ${response.body}');
@@ -680,12 +672,12 @@ class ApiService {
     }
   }
 
-  // 🔹 Obtener agentes por departamento
+    // 🔹 Obtener agentes por departamento
   Future<List<dynamic>> getAgentesPorDepartamento(int departamentoId) async {
     final response = await protectedRequest(
       (token) => http.get(
         Uri.parse('$baseUrl/departamentos/$departamentoId/agentes'),
-      headers: {'Authorization': 'Bearer $token'},
+        headers: {'Authorization': 'Bearer $token'},
       ),
     );
     if (response.statusCode == 200) {
@@ -978,12 +970,6 @@ class ApiService {
 
   // 🔹 Editar categoría existente (para administradores)
   Future<void> updateCategoria(String categoriaId, Map<String, dynamic> categoriaData) async {
-    if (kDebugMode) {
-      print('🔍 DEBUG - updateCategoria llamado con:');
-      print('  ID de categoría: $categoriaId');
-      print('  Datos: $categoriaData');
-    }
-    
     final response = await protectedRequest(
       (token) => http.put(
         Uri.parse('$baseUrl/admin/categorias/$categoriaId'),
@@ -994,12 +980,6 @@ class ApiService {
         body: json.encode(categoriaData),
       ),
     );
-    
-    if (kDebugMode) {
-      print('🔍 DEBUG - Respuesta del backend:');
-      print('  Status: ${response.statusCode}');
-      print('  Body: ${response.body}');
-    }
     
     if (response.statusCode == 200) {
       return;
@@ -1044,11 +1024,6 @@ class ApiService {
 
   // 🔹 Obtener agentes disponibles para una categoría (para administradores)
   Future<List<dynamic>> getAgentesDisponiblesCategoria(String categoriaId) async {
-    if (kDebugMode) {
-      print('🔍 DEBUG - getAgentesDisponiblesCategoria llamado con:');
-      print('  ID de categoría: $categoriaId');
-    }
-    
     final response = await protectedRequest(
       (token) => http.get(
         Uri.parse('$baseUrl/admin/categorias/$categoriaId/agentes-disponibles?categoria_id=$categoriaId'),
@@ -1058,12 +1033,6 @@ class ApiService {
         },
       ),
     );
-    
-    if (kDebugMode) {
-      print('🔍 DEBUG - Respuesta de agentes disponibles:');
-      print('  Status: ${response.statusCode}');
-      print('  Body: ${response.body}');
-    }
     
     if (response.statusCode == 200) {
       return json.decode(response.body);
@@ -1229,7 +1198,8 @@ class ApiService {
       ),
     );
     if (response.statusCode == 200) {
-      return json.decode(response.body);
+      final agentes = json.decode(response.body);
+      return agentes;
     } else {
       throw Exception('Error al obtener agentes disponibles: ${response.body}');
     }
@@ -1239,14 +1209,15 @@ class ApiService {
   Future<Map<String, dynamic>> reasignarTicket(String ticketId, String nuevoAgenteId) async {
     final response = await protectedRequest(
       (token) => http.put(
-        Uri.parse('$baseUrl/tickets/$ticketId/assign'),
+        Uri.parse('$baseUrl/tickets/$ticketId/asignar'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: json.encode({'agente_id': nuevoAgenteId}),
+        body: json.encode({'id_agente': nuevoAgenteId}),
       ),
     );
+    
     if (response.statusCode == 200) {
       return json.decode(response.body);
     } else {

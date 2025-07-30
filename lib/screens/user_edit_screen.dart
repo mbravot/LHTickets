@@ -268,11 +268,6 @@ class _UserEditScreenState extends State<UserEditScreen>
           return;
         }
 
-        // Debug temporal para ver qué datos se están enviando
-        print('🔍 DEBUG - Datos a actualizar:');
-        print('  UserId: $userId');
-        print('  UpdatedData: $updatedData');
-
         await apiService.updateUser(userId, updatedData);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

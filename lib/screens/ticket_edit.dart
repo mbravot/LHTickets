@@ -67,9 +67,9 @@ class _TicketEditScreenState extends State<TicketEditScreen>
         : int.tryParse(widget.ticket['id_estado']?.toString() ?? '');
     _selectedCategoriaId = widget.ticket['id_categoria']?.toString();
     // Prints para depuración
-    print('INIT _prioridad: [32m'+_prioridad.toString()+'\x1b[0m');
-    print('INIT _departamento: [32m'+_departamento.toString()+'\x1b[0m');
-    print('INIT _estado: [32m'+_estado.toString()+'\x1b[0m');
+    print('INIT _prioridad:  [32m'+_prioridad.toString()+'\x1b[0m');
+    print('INIT _departamento:  [32m'+_departamento.toString()+'\x1b[0m');
+    print('INIT _estado:  [32m'+_estado.toString()+'\x1b[0m');
 
     // Inicializar animación
     _animationController = AnimationController(
@@ -105,10 +105,6 @@ class _TicketEditScreenState extends State<TicketEditScreen>
       final departamentosData = await apiService.getDepartamentos();
       final estadosData = await apiService.getEstadosUsuarios();
 
-      // Prints para depuración
-      print("Departamentos recibidos: $departamentosData");
-      print("ID departamento del ticket: "+ _departamento.toString());
-
       setState(() {
         prioridades = prioridadesData;
         departamentos = departamentosData;
@@ -122,13 +118,11 @@ class _TicketEditScreenState extends State<TicketEditScreen>
             _prioridad = prioridadEncontrada['id'] is int
               ? prioridadEncontrada['id']
               : int.tryParse(prioridadEncontrada['id'].toString());
-            print('PRIORIDAD corregida por nombre: '+_prioridad.toString());
           }
         }
         // Eliminar búsqueda por nombre para estado, solo usar id_estado
       });
     } catch (e) {
-      print("Error al cargar datos: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error al cargar los datos: $e'),
@@ -162,7 +156,6 @@ class _TicketEditScreenState extends State<TicketEditScreen>
         }
       });
     } catch (e) {
-      print("Error al cargar categorías: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error al cargar categorías: $e'), backgroundColor: Colors.red),
       );
@@ -182,10 +175,6 @@ class _TicketEditScreenState extends State<TicketEditScreen>
 
   // Modificar el método _submitForm para incluir id_categoria
   Future<void> _submitForm() async {
-    // Prints para depuración antes de guardar
-    print('SUBMIT _prioridad: [34m'+_prioridad.toString()+'\x1b[0m');
-    print('SUBMIT _departamento: [34m'+_departamento.toString()+'\x1b[0m');
-    print('SUBMIT _estado: [34m'+_estado.toString()+'\x1b[0m');
     if (_tituloController.text.trim().isEmpty || _descripcionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('⚠️ El título y la descripción no pueden estar vacíos'), backgroundColor: Colors.red),
@@ -223,12 +212,9 @@ class _TicketEditScreenState extends State<TicketEditScreen>
         Navigator.pop(context, true);
       }
     } catch (e) {
-      print("Error al actualizar ticket: $e");
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error al actualizar ticket: $e'), backgroundColor: Colors.red),
         );
-      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

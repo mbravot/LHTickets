@@ -87,9 +87,7 @@ class _AdminAppManagementScreenState extends State<AdminAppManagementScreen>
     });
     
     try {
-      print('🔄 Intentando usar endpoint optimizado...');
       final usuariosConApps = await widget.apiService.getUsuariosConApps();
-      print('✅ Endpoint optimizado funcionó, usuarios cargados: ${usuariosConApps.length}');
       
       setState(() {
         usuariosApps = usuariosConApps;
@@ -101,7 +99,6 @@ class _AdminAppManagementScreenState extends State<AdminAppManagementScreen>
       
       try {
         final usuariosData = await widget.apiService.getUsuarios();
-        print('📋 Usuarios cargados: ${usuariosData.length}');
         
         // Mostrar usuarios inmediatamente sin apps para mejor UX
         setState(() {
