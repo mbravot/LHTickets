@@ -387,7 +387,7 @@ class ApiService {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-      body: json.encode({'agente_id': agenteId}),
+      body: json.encode({'id_agente': agenteId}),
     );
 
     if (response.statusCode != 200) {
