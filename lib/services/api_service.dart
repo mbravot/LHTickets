@@ -1166,7 +1166,7 @@ class ApiService {
   Future<List<dynamic>> getUsuariosConApps() async {
     final response = await protectedRequest(
       (token) => http.get(
-        Uri.parse('$baseUrl/admin/usuarios/apps'),
+        Uri.parse('$baseUrl/admin/usuarios-apps'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

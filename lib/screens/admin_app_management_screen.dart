@@ -87,40 +87,37 @@ class _AdminAppManagementScreenState extends State<AdminAppManagementScreen>
     });
     
     try {
-      // Usar el endpoint optimizado que obtiene todos los usuarios con sus apps en una sola llamada
+      print('🔄 Intentando usar endpoint optimizado...');
       final usuariosConApps = await widget.apiService.getUsuariosConApps();
+      print('✅ Endpoint optimizado funcionó, usuarios cargados: ${usuariosConApps.length}');
       
       setState(() {
         usuariosApps = usuariosConApps;
         isLoadingUsuarios = false;
       });
     } catch (e) {
-      // Fallback: si el endpoint optimizado no existe, usar el método anterior
+      print('❌ Endpoint optimizado falló: $e');
+      print('🔄 Usando fallback con carga en paralelo...');
+      
       try {
         final usuariosData = await widget.apiService.getUsuarios();
-        List<dynamic> usuariosConApps = [];
+        print('📋 Usuarios cargados: ${usuariosData.length}');
         
-        for (var usuario in usuariosData) {
-          try {
-            final appsUsuario = await widget.apiService.getUsuarioAppsById(usuario['id'].toString());
-            usuariosConApps.add({
-              ...usuario,
-              'apps': appsUsuario['apps'] ?? [],
-            });
-          } catch (e) {
-            // Si no se pueden obtener las apps, agregar el usuario sin apps
-            usuariosConApps.add({
-              ...usuario,
-              'apps': [],
-            });
-          }
-        }
-        
+        // Mostrar usuarios inmediatamente sin apps para mejor UX
         setState(() {
-          usuariosApps = usuariosConApps;
+          usuariosApps = usuariosData.map((usuario) => {
+            ...usuario,
+            'apps': [],
+          }).toList();
           isLoadingUsuarios = false;
         });
+        
+        // Cargar apps en paralelo para mejorar la experiencia del usuario
+        print('🔄 Cargando apps en paralelo...');
+        await _cargarAppsEnParalelo(usuariosData);
+        
       } catch (fallbackError) {
+        print('❌ Error en fallback: $fallbackError');
         setState(() {
           isLoadingUsuarios = false;
         });
@@ -131,6 +128,47 @@ class _AdminAppManagementScreenState extends State<AdminAppManagementScreen>
           ),
         );
       }
+    }
+  }
+
+  // Método para cargar apps en paralelo
+  Future<void> _cargarAppsEnParalelo(List<dynamic> usuariosData) async {
+    try {
+      // Crear una lista de futures para cargar apps en paralelo
+      List<Future<Map<String, dynamic>>> futures = [];
+      
+      for (var usuario in usuariosData) {
+        futures.add(_cargarAppsUsuario(usuario));
+      }
+      
+      // Esperar a que todas las apps se carguen
+      final resultados = await Future.wait(futures);
+      
+      // Actualizar la UI con las apps cargadas
+      setState(() {
+        usuariosApps = resultados;
+      });
+      
+      print('✅ Apps cargadas en paralelo para ${resultados.length} usuarios');
+    } catch (e) {
+      print('⚠️ Error cargando apps en paralelo: $e');
+    }
+  }
+
+  // Método para cargar apps de un usuario específico
+  Future<Map<String, dynamic>> _cargarAppsUsuario(Map<String, dynamic> usuario) async {
+    try {
+      final appsUsuario = await widget.apiService.getUsuarioAppsById(usuario['id'].toString());
+      return {
+        ...usuario,
+        'apps': appsUsuario['apps'] ?? [],
+      };
+    } catch (e) {
+      print('⚠️ Error cargando apps para ${usuario['nombre']}: $e');
+      return {
+        ...usuario,
+        'apps': [],
+      };
     }
   }
 
