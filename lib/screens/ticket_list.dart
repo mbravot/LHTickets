@@ -1497,7 +1497,7 @@ class _TicketListScreenState extends State<TicketListScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.check_circle, color: primaryColor),
+                        Icon(Icons.check_circle, color: Colors.red),
                         SizedBox(width: 8),
                         Text(
                           'Cerrados',
@@ -1643,7 +1643,7 @@ class _TicketListScreenState extends State<TicketListScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.check_circle, color: primaryColor),
+                        Icon(Icons.check_circle, color: Colors.red),
                         SizedBox(width: 8),
                         Text(
                           'Cerrados',
@@ -1653,14 +1653,14 @@ class _TicketListScreenState extends State<TicketListScreen>
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: primaryColor.withOpacity(0.1),
+                            color: Colors.red.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             '${misTicketsCerrados.length}',
                             style: TextStyle(
                               fontSize: 12,
-                              color: primaryColor,
+                              color: Colors.red,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -1672,7 +1672,7 @@ class _TicketListScreenState extends State<TicketListScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.apartment, color: primaryColor),
+                        Icon(Icons.apartment, color: Colors.amber),
                         SizedBox(width: 8),
                         Text(
                           'Mi Departamento',
@@ -1682,14 +1682,14 @@ class _TicketListScreenState extends State<TicketListScreen>
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: primaryColor.withOpacity(0.1),
+                            color: Colors.amber.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             '${ticketsDepartamento.length}',
                             style: TextStyle(
                               fontSize: 12,
-                              color: primaryColor,
+                              color: Colors.amber,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -1701,7 +1701,7 @@ class _TicketListScreenState extends State<TicketListScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.inbox, color: primaryColor),
+                        Icon(Icons.inbox, color: Colors.blue),
                         SizedBox(width: 8),
                         Text(
                           'Mis Tickets',
@@ -1711,14 +1711,14 @@ class _TicketListScreenState extends State<TicketListScreen>
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: primaryColor.withOpacity(0.1),
+                            color: Colors.blue.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             '${misTickets.length}',
                             style: TextStyle(
                               fontSize: 12,
-                              color: primaryColor,
+                              color: Colors.blue,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
