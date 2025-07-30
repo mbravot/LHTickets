@@ -108,7 +108,25 @@ class _AgentManagementScreenState extends State<AgentManagementScreen>
   Map<String, List<dynamic>> _agruparAgentesPorSucursal() {
     Map<String, List<dynamic>> agentesPorSucursal = {};
     for (var agente in agentes) {
-      String sucursal = (agente['sucursal'] ?? agente['sucursal_activa'] ?? 'Sin sucursal').toString();
+      // Buscar usuario por id_usuario para obtener la sucursal
+      final usuario = usuarios.firstWhere(
+        (u) => u['id'].toString() == (agente['id_usuario']?.toString() ?? agente['id']?.toString()),
+        orElse: () => null,
+      );
+      
+      String sucursal = 'Sin sucursal';
+      if (usuario != null) {
+        if (usuario['sucursal'] != null) {
+          sucursal = usuario['sucursal'].toString();
+        } else if (usuario['sucursal_activa'] != null) {
+          if (usuario['sucursal_activa'] is Map) {
+            sucursal = usuario['sucursal_activa']['nombre']?.toString() ?? 'Sin sucursal';
+          } else {
+            sucursal = usuario['sucursal_activa'].toString();
+          }
+        }
+      }
+      
       if (!agentesPorSucursal.containsKey(sucursal)) {
         agentesPorSucursal[sucursal] = [];
       }
@@ -163,7 +181,19 @@ class _AgentManagementScreenState extends State<AgentManagementScreen>
       orElse: () => null,
     );
     final correo = usuario != null ? usuario['correo'] ?? '' : '';
-    final sucursalActiva = usuario != null ? (usuario['sucursal'] ?? usuario['sucursal_activa'] ?? '') : '';
+    String sucursalActiva = '';
+    if (usuario != null) {
+      if (usuario['sucursal'] != null) {
+        sucursalActiva = usuario['sucursal'].toString();
+      } else if (usuario['sucursal_activa'] != null) {
+        if (usuario['sucursal_activa'] is Map) {
+          sucursalActiva = usuario['sucursal_activa']['nombre']?.toString() ?? '';
+        } else {
+          sucursalActiva = usuario['sucursal_activa'].toString();
+        }
+      }
+    }
+    
     return Card(
       elevation: 4,
       shadowColor: Colors.black26,
@@ -180,7 +210,7 @@ class _AgentManagementScreenState extends State<AgentManagementScreen>
                 CircleAvatar(
                   backgroundColor: primaryColor.withOpacity(0.1),
                   child: Icon(
-                    Icons.person,
+                    Icons.supervisor_account,
                     color: primaryColor,
                   ),
                 ),
@@ -191,29 +221,28 @@ class _AgentManagementScreenState extends State<AgentManagementScreen>
                     children: [
                       Text(
                         agente['nombre'] ?? agente['usuario'] ?? '',
-                        style: cardTitleStyle,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[800],
+                        ),
                       ),
                       Text(
                         correo,
-                        style: cardSubtitleStyle,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
                       ),
-                      Text(
-                        'Sucursal: $sucursalActiva',
-                        style: cardSubtitleStyle,
-                      ),
-                      if (nombresDepartamentos.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4.0),
-                          child: Wrap(
-                            spacing: 6.0,
-                            runSpacing: 2.0,
-                            children: nombresDepartamentos.map((dep) => Chip(
-                              label: Text(dep, style: TextStyle(fontSize: 12)),
-                              backgroundColor: primaryColor.withOpacity(0.1),
-                              labelStyle: TextStyle(color: primaryColor),
-                            )).toList(),
+                      if (agente['usuario'] != null)
+                        Text(
+                          '@${agente['usuario']}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.green[500],
+                            fontStyle: FontStyle.italic,
                           ),
-                      ),
+                        ),
                     ],
                   ),
                 ),
@@ -297,8 +326,90 @@ class _AgentManagementScreenState extends State<AgentManagementScreen>
                 ),
               ],
             ),
+            SizedBox(height: 12),
+            Row(
+              children: [
+                _buildInfoChip(
+                  Icons.business_outlined,
+                  sucursalActiva.isNotEmpty ? sucursalActiva : 'Sin asignar',
+                  Colors.blue,
+                ),
+                SizedBox(width: 8),
+                _buildInfoChip(
+                  Icons.business,
+                  '${nombresDepartamentos.length} departamentos',
+                  Colors.purple,
+                ),
+                SizedBox(width: 8),
+                _buildInfoChip(
+                  Icons.supervisor_account,
+                  'Agente',
+                  primaryColor,
+                ),
+              ],
+            ),
+            if (nombresDepartamentos.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Wrap(
+                  spacing: 6.0,
+                  runSpacing: 4.0,
+                  children: nombresDepartamentos.map((dep) => Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.green.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      dep,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.green[700],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  )).toList(),
+                ),
+              ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildInfoChip(IconData icon, String label, Color color) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 16,
+            color: color,
+          ),
+          SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: color,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }

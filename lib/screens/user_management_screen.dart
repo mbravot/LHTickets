@@ -10,7 +10,7 @@ class UserManagementScreen extends StatefulWidget {
 }
 
 class _UserManagementScreenState extends State<UserManagementScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final ApiService apiService = ApiService();
   List<dynamic> usuarios = [];
   bool _isLoading = false;
@@ -18,6 +18,11 @@ class _UserManagementScreenState extends State<UserManagementScreen>
   String _searchQuery = '';
   int _currentPage = 0;
   final int _itemsPerPage = 10; // Número de usuarios por página
+
+  // Tabs
+  late TabController _tabController;
+  List<String> sucursales = [];
+  String _selectedSucursal = 'Todos';
 
   // Animación
   late AnimationController _animationController;
@@ -56,10 +61,37 @@ class _UserManagementScreenState extends State<UserManagementScreen>
     _animationController.forward();
   }
 
+  void _initializeTabController() {
+    // Obtener sucursales únicas de los usuarios
+    Set<String> sucursalesSet = {};
+    for (var usuario in usuarios) {
+      if (usuario['sucursal_activa']?['nombre'] != null) {
+        sucursalesSet.add(usuario['sucursal_activa']['nombre']);
+      }
+    }
+    sucursales = ['Todos', ...sucursalesSet.toList()..sort()];
+    
+    // Inicializar TabController
+    _tabController = TabController(
+      length: sucursales.length,
+      vsync: this,
+    );
+    
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) {
+        setState(() {
+          _selectedSucursal = sucursales[_tabController.index];
+          _currentPage = 0; // Resetear página al cambiar tab
+        });
+      }
+    });
+  }
+
   @override
   void dispose() {
     _animationController.dispose();
     _searchController.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -74,6 +106,9 @@ class _UserManagementScreenState extends State<UserManagementScreen>
               .compareTo((b['nombre'] as String).toLowerCase()));
         _isLoading = false;
       });
+      
+      // Inicializar TabController después de cargar usuarios
+      _initializeTabController();
     } catch (e) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -86,13 +121,23 @@ class _UserManagementScreenState extends State<UserManagementScreen>
   }
 
   List<dynamic> _filtrarUsuarios(List<dynamic> usuarios) {
-    if (_searchQuery.isEmpty) {
-      return usuarios;
+    List<dynamic> usuariosFiltrados = usuarios;
+    
+    // Filtrar por sucursal seleccionada
+    if (_selectedSucursal != 'Todos') {
+      usuariosFiltrados = usuariosFiltrados.where((user) =>
+          user['sucursal_activa']?['nombre'] == _selectedSucursal).toList();
     }
-    return usuarios
-        .where((user) =>
-            user['nombre'].toLowerCase().contains(_searchQuery.toLowerCase()))
-        .toList();
+    
+    // Filtrar por búsqueda de texto
+    if (_searchQuery.isNotEmpty) {
+      usuariosFiltrados = usuariosFiltrados
+          .where((user) =>
+              user['nombre'].toLowerCase().contains(_searchQuery.toLowerCase()))
+          .toList();
+    }
+    
+    return usuariosFiltrados;
   }
 
   List<dynamic> _obtenerUsuariosPaginados(List<dynamic> usuarios) {
@@ -107,6 +152,14 @@ class _UserManagementScreenState extends State<UserManagementScreen>
   bool _hayMasPaginas(List<dynamic> usuariosFiltrados) {
     int startIndex = (_currentPage + 1) * _itemsPerPage;
     return startIndex < usuariosFiltrados.length;
+  }
+
+  int _getUserCountForSucursal(String sucursal) {
+    if (sucursal == 'Todos') {
+      return usuarios.length;
+    }
+    return usuarios.where((user) =>
+        user['sucursal_activa']?['nombre'] == sucursal).length;
   }
 
   Widget _buildUserCard(dynamic user) {
@@ -184,7 +237,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                             '@${user['usuario']}',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[500],
+                              color: Colors.green[500],
                               fontStyle: FontStyle.italic,
                             ),
                           ),
@@ -199,12 +252,12 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                   _buildInfoChip(
                     Icons.people_outline,
                     user['rol'] ?? 'Sin asignar',
-                    primaryColor,
+                    Colors.orange,
                   ),
                   SizedBox(width: 8),
                   _buildInfoChip(
                     Icons.business_outlined,
-                    user['sucursal'] ?? 'Sin asignar',
+                    user['sucursal_activa']?['nombre'] ?? 'Sin asignar',
                     Colors.blue,
                   ),
                   SizedBox(width: 8),
@@ -343,6 +396,41 @@ class _UserManagementScreenState extends State<UserManagementScreen>
             tooltip: 'Recargar lista',
           ),
         ],
+        bottom: sucursales.isNotEmpty
+            ? TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                indicatorColor: Colors.white,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white70,
+                tabs: sucursales.map((sucursal) {
+                  int count = _getUserCountForSucursal(sucursal);
+                  return Tab(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(sucursal),
+                        SizedBox(width: 4),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            count.toString(),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              )
+            : null,
       ),
       body: FadeTransition(
         opacity: _fadeAnimation,

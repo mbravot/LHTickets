@@ -14,6 +14,7 @@ import 'package:file_picker/file_picker.dart';
 //import 'dart:typed_data';
 import 'department_management_screen.dart';
 import 'admin_app_management_screen.dart';
+import 'categoria_management_screen.dart';
 import 'package:flutter/foundation.dart';
 //import 'package:flutter/rendering.dart' as ui;
 // Importar dart:html solo para web
@@ -322,12 +323,15 @@ class _TicketListScreenState extends State<TicketListScreen>
           final estado = ticket['estado']?.toString().toLowerCase() ?? '';
           final departamento =
               ticket['departamento']?.toString().toLowerCase() ?? '';
+          final categoria =
+              ticket['categoria']?.toString().toLowerCase() ?? '';
 
           return titulo.contains(query.toLowerCase()) ||
               agente.contains(query.toLowerCase()) ||
               usuario.contains(query.toLowerCase()) ||
               estado.contains(query.toLowerCase()) ||
-              departamento.contains(query.toLowerCase());
+              departamento.contains(query.toLowerCase()) ||
+              categoria.contains(query.toLowerCase());
         }).toList();
       }
     });
@@ -1153,7 +1157,7 @@ class _TicketListScreenState extends State<TicketListScreen>
                                 ],
                               ),
                               const SizedBox(height: 8),
-                              // Agente y Departamento en la misma línea
+                              // Agente, Departamento y Categoría en la misma línea
                               Row(
                                 children: [
                                   Icon(Icons.support_agent, size: 16, color: Colors.blue),
@@ -1166,10 +1170,21 @@ class _TicketListScreenState extends State<TicketListScreen>
                                   Icon(Icons.business, size: 16, color: Colors.blue),
                                   SizedBox(width: 4),
                                   Text(
-                                    "Depto: "+(
+                                    "Departamento: "+(
                                       (ticket['departamento'] is Map && ticket['departamento'] != null)
                                         ? ticket['departamento']['nombre']
                                         : ticket['departamento']?.toString() ?? 'Sin asignar'
+                                    ),
+                                    style: cardSubtitleStyle,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Icon(Icons.category, size: 16, color: Colors.blue),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    "Categoría: "+(
+                                      (ticket['categoria'] is Map && ticket['categoria'] != null)
+                                        ? ticket['categoria']['nombre']
+                                        : ticket['categoria']?.toString() ?? 'Sin asignar'
                                     ),
                                     style: cardSubtitleStyle,
                                   ),
@@ -1823,6 +1838,18 @@ class _TicketListScreenState extends State<TicketListScreen>
                     context,
                     MaterialPageRoute(
                       builder: (context) => DepartmentManagementScreen(),
+                    ),
+                  );
+                },
+              ),
+              _buildDrawerItem(
+                icon: Icons.category,
+                title: 'Gestionar Categorías',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CategoriaManagementScreen(),
                     ),
                   );
                 },

@@ -440,21 +440,24 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                       ),
                       const Divider(height: 24),
                       _buildInfoRow(Icons.confirmation_number, "ID", "#${ticket['id'].toString()}"),
+                      _buildInfoRow(
+                          Icons.calendar_today, "Fecha", formatearComoChile(ticket['creado'])),
                       _buildInfoRow(Icons.title, "Título", ticket['titulo'] ?? 'Sin título'),
                       _buildInfoRow(Icons.person, "Creado por", ticket['usuario']),
                       _buildInfoRow(Icons.location_on, "Sucursal",
                         (ticket['sucursal'] is Map && ticket['sucursal'] != null)
                           ? (ticket['sucursal']['nombre'] ?? 'No asignada')
-                          : ticket['sucursal']?.toString() ?? 'No asignada'),
-                      _buildInfoRow(Icons.support_agent, "Agente", ticket['agente'] ?? 'Sin asignar'),
-                      _buildInfoRow(
-                          Icons.flag, "Prioridad", ticket['prioridad']),
+                          : ticket['sucursal']?.toString() ?? 'No asignada'),     
                       _buildInfoRow(Icons.business, "Departamento",
                           (ticket['departamento'] is Map && ticket['departamento'] != null)
                             ? ticket['departamento']['nombre']
                             : ticket['departamento']?.toString() ?? 'Sin asignar'),
-                      _buildInfoRow(
-                          Icons.calendar_today, "Fecha", formatearComoChile(ticket['creado'])),
+                      _buildInfoRow(Icons.category, "Categoría",
+                          (ticket['categoria'] is Map && ticket['categoria'] != null)
+                            ? ticket['categoria']['nombre']
+                            : ticket['categoria']?.toString() ?? 'Sin asignar'),
+                      _buildAgenteRow(),
+                      _buildInfoRow(Icons.flag, "Prioridad", ticket['prioridad']),
                     ],
                   ),
                 ),
@@ -843,6 +846,162 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
     );
   }
 
+  Widget _buildAgenteRow() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        children: [
+          Icon(Icons.support_agent, size: 20, color: Colors.blue),
+          const SizedBox(width: 8),
+          Text(
+            "Agente: ",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[800],
+            ),
+          ),
+          Expanded(
+            child: Text(
+              ticket['agente'] ?? 'Sin asignar',
+              style: TextStyle(
+                color: Colors.grey[800],
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          // Botón de reasignación solo para agentes y administradores
+          if (ticket['estado'] != 'CERRADO' && ticket['estado'] != 'CANCELADO')
+            IconButton(
+              icon: Icon(Icons.swap_horiz, color: primaryColor),
+              onPressed: () => _mostrarDialogoReasignacion(),
+              tooltip: 'Reasignar ticket',
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _mostrarDialogoReasignacion() async {
+    try {
+      // Obtener agentes disponibles
+      List<dynamic> agentesDisponibles = await widget.apiService.getAgentesDisponiblesTicket(ticket['id'].toString());
+      
+      if (agentesDisponibles.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ No hay agentes disponibles para reasignar'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      String? agenteSeleccionado;
+      
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.swap_horiz, color: primaryColor),
+              SizedBox(width: 8),
+              Text('Reasignar Ticket', style: TextStyle(color: primaryColor)),
+            ],
+          ),
+          content: Container(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Selecciona el nuevo agente para el ticket:',
+                  style: TextStyle(fontSize: 16),
+                ),
+                SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: agenteSeleccionado,
+                  decoration: InputDecoration(
+                    labelText: 'Nuevo Agente',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    prefixIcon: Icon(Icons.person, color: primaryColor),
+                  ),
+                  items: agentesDisponibles.map((agente) {
+                    return DropdownMenuItem<String>(
+                      value: agente['id'].toString(),
+                      child: Text('${agente['nombre']} (${agente['usuario']})'),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    agenteSeleccionado = value;
+                  },
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Debes seleccionar un agente';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (agenteSeleccionado != null) {
+                  try {
+                    // Reasignar el ticket
+                    await widget.apiService.asignarTicket(ticket['id'].toString(), agenteSeleccionado!);
+                    
+                    // Actualizar el estado local
+                    setState(() {
+                      ticket['agente'] = agentesDisponibles.firstWhere(
+                        (a) => a['id'].toString() == agenteSeleccionado,
+                      )['nombre'];
+                    });
+                    
+                    Navigator.of(context).pop();
+                    
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('✅ Ticket reasignado correctamente'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('❌ Error al reasignar: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
+              ),
+              child: Text('Reasignar'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error al cargar agentes: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   Future<void> _descargarTicketPDF(Map<String, dynamic> ticket) async {
     // Obtener comentarios
     List<dynamic> comentariosList = [];
@@ -894,13 +1053,15 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                     ],
                   ),
                   pw.Divider(),
+                  pw.Text('Fecha: ${formatearComoChile(ticket['creado'])}'),
                   pw.Text('Título: ${ticket['titulo'] ?? 'Sin título'}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
                   pw.Text('Creado por: ${ticket['usuario']}'),
                   pw.Text('Sucursal: ${(ticket['sucursal'] is Map && ticket['sucursal'] != null) ? (ticket['sucursal']['nombre'] ?? 'No asignada') : ticket['sucursal']?.toString() ?? 'No asignada'}'),
+                  pw.Text('Departamento: ${(ticket['departamento'] is Map && ticket['departamento'] != null) ? ticket['departamento']['nombre'] : ticket['departamento']?.toString() ?? 'Sin asignar'}'),
+                  pw.Text('Categoría: ${(ticket['categoria'] is Map && ticket['categoria'] != null) ? ticket['categoria']['nombre'] : ticket['categoria']?.toString() ?? 'Sin asignar'}'),
                   pw.Text('Agente: ${ticket['agente'] ?? "Sin asignar"}'),
                   pw.Text('Prioridad: ${ticket['prioridad']}'),
-                  pw.Text('Departamento: ${(ticket['departamento'] is Map && ticket['departamento'] != null) ? ticket['departamento']['nombre'] : ticket['departamento']?.toString() ?? 'Sin asignar'}'),
-                  pw.Text('Fecha: ${formatearComoChile(ticket['creado'])}'),
+                  
                 ],
               ),
             ),

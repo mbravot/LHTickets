@@ -2,10 +2,11 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart'; // Added for kDebugMode
 
 class ApiService {
-  final String baseUrl = 'https://apilhtickets-927498545444.us-central1.run.app/api'; //Ruta API
-  //final String baseUrl = 'http://192.168.1.37:8080/api'; //Ruta API
+  //final String baseUrl = 'https://apilhtickets-927498545444.us-central1.run.app/api'; //Ruta API
+  final String baseUrl = 'http://192.168.1.37:8080/api'; //Ruta API
 
 
   // 🔹 Obtener token guardado en SharedPreferences
@@ -165,12 +166,14 @@ class ApiService {
           'estado': ticket['estado']?.toString() ?? 'ABIERTO',
           'prioridad': ticket['prioridad']?.toString() ?? 'Normal',
           'departamento': ticket['departamento'],
+          'categoria': ticket['categoria'],
           'agente': ticket['agente']?.toString() ?? 'Sin asignar',
           'usuario': ticket['usuario']?.toString() ?? 'Usuario desconocido',
           'creado': ticket['fecha_creacion']?.toString() ?? '',
           'id_usuario': ticket['id_usuario']?.toString() ?? '',
           'id_agente': ticket['id_agente']?.toString(),
           'id_departamento': ticket['id_departamento']?.toString(),
+          'id_categoria': ticket['id_categoria']?.toString(),
           'id_estado': ticket['id_estado'],
           'adjunto': ticket['adjunto']?.toString() ?? '',
           'sucursal': ticket['sucursal'],
@@ -379,12 +382,12 @@ class ApiService {
     if (token == null) throw Exception('Token no encontrado');
 
     final response = await http.put(
-      Uri.parse('$baseUrl/tickets/$ticketId/asignar'),
+      Uri.parse('$baseUrl/tickets/$ticketId/assign'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-      body: json.encode({'id_agente': agenteId}),
+      body: json.encode({'agente_id': agenteId}),
     );
 
     if (response.statusCode != 200) {
@@ -693,24 +696,7 @@ class ApiService {
     }
   }
 
-// ✅ Función para reasignar ticket
-  Future<void> reasignarTicket(String ticketId, String nuevoAgenteId) async {
-    final prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('jwt_token');
 
-    final response = await http.put(
-      Uri.parse('$baseUrl/tickets/$ticketId/asignar'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json'
-      },
-      body: jsonEncode({'id_agente': nuevoAgenteId}),
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception('Error al reasignar el ticket');
-    }
-  }
 
   // Método para crear un nuevo usuario
   Future<dynamic> createUser(Map<String, dynamic> userData) async {
@@ -953,6 +939,139 @@ class ApiService {
     }
   }
 
+  // 🔹 Obtener todas las categorías (para administradores)
+  Future<List<dynamic>> getAdminCategorias() async {
+    final response = await protectedRequest(
+      (token) => http.get(
+        Uri.parse('$baseUrl/admin/categorias'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Error al obtener las categorías: ${response.body}');
+    }
+  }
+
+  // 🔹 Crear nueva categoría (para administradores)
+  Future<Map<String, dynamic>> createCategoria(Map<String, dynamic> categoriaData) async {
+    final response = await protectedRequest(
+      (token) => http.post(
+        Uri.parse('$baseUrl/admin/categorias'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode(categoriaData),
+      ),
+    );
+    if (response.statusCode == 201) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Error al crear la categoría: ${response.body}');
+    }
+  }
+
+  // 🔹 Editar categoría existente (para administradores)
+  Future<void> updateCategoria(String categoriaId, Map<String, dynamic> categoriaData) async {
+    if (kDebugMode) {
+      print('🔍 DEBUG - updateCategoria llamado con:');
+      print('  ID de categoría: $categoriaId');
+      print('  Datos: $categoriaData');
+    }
+    
+    final response = await protectedRequest(
+      (token) => http.put(
+        Uri.parse('$baseUrl/admin/categorias/$categoriaId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode(categoriaData),
+      ),
+    );
+    
+    if (kDebugMode) {
+      print('🔍 DEBUG - Respuesta del backend:');
+      print('  Status: ${response.statusCode}');
+      print('  Body: ${response.body}');
+    }
+    
+    if (response.statusCode == 200) {
+      return;
+    } else {
+      throw Exception('Error al actualizar la categoría: ${response.body}');
+    }
+  }
+
+  // 🔹 Eliminar categoría (para administradores)
+  Future<void> deleteCategoria(String categoriaId) async {
+    final response = await protectedRequest(
+      (token) => http.delete(
+        Uri.parse('$baseUrl/admin/categorias/$categoriaId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Error al eliminar la categoría: ${response.body}');
+    }
+  }
+
+  // 🔹 Obtener usuarios disponibles para una categoría (para administradores)
+  Future<List<dynamic>> getUsuariosDisponiblesCategoria(String categoriaId) async {
+    final response = await protectedRequest(
+      (token) => http.get(
+        Uri.parse('$baseUrl/admin/categorias/$categoriaId/usuarios-disponibles'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Error al obtener usuarios disponibles: ${response.body}');
+    }
+  }
+
+  // 🔹 Obtener agentes disponibles para una categoría (para administradores)
+  Future<List<dynamic>> getAgentesDisponiblesCategoria(String categoriaId) async {
+    if (kDebugMode) {
+      print('🔍 DEBUG - getAgentesDisponiblesCategoria llamado con:');
+      print('  ID de categoría: $categoriaId');
+    }
+    
+    final response = await protectedRequest(
+      (token) => http.get(
+        Uri.parse('$baseUrl/admin/categorias/$categoriaId/agentes-disponibles?categoria_id=$categoriaId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ),
+    );
+    
+    if (kDebugMode) {
+      print('🔍 DEBUG - Respuesta de agentes disponibles:');
+      print('  Status: ${response.statusCode}');
+      print('  Body: ${response.body}');
+    }
+    
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Error al obtener agentes disponibles: ${response.body}');
+    }
+  }
+
   // 🔹 Obtener todas las apps disponibles (para administradores)
   Future<List<dynamic>> getAdminApps() async {
     final response = await protectedRequest(
@@ -1077,6 +1196,43 @@ class ApiService {
       return json.decode(response.body);
     } else {
       throw Exception('Error al obtener las apps del usuario: ${response.body}');
+    }
+  }
+
+  // 🔹 Obtener agentes disponibles para reasignar un ticket
+  Future<List<dynamic>> getAgentesDisponiblesTicket(String ticketId) async {
+    final response = await protectedRequest(
+      (token) => http.get(
+        Uri.parse('$baseUrl/tickets/$ticketId/agentes-disponibles'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Error al obtener agentes disponibles: ${response.body}');
+    }
+  }
+
+  // 🔹 Reasignar ticket a un nuevo agente
+  Future<Map<String, dynamic>> reasignarTicket(String ticketId, String nuevoAgenteId) async {
+    final response = await protectedRequest(
+      (token) => http.put(
+        Uri.parse('$baseUrl/tickets/$ticketId/assign'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({'agente_id': nuevoAgenteId}),
+      ),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Error al reasignar el ticket: ${response.body}');
     }
   }
 }
