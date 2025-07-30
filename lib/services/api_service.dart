@@ -1162,6 +1162,24 @@ class ApiService {
     }
   }
 
+  // 🔹 Obtener todos los usuarios con sus apps (optimizado para administradores)
+  Future<List<dynamic>> getUsuariosConApps() async {
+    final response = await protectedRequest(
+      (token) => http.get(
+        Uri.parse('$baseUrl/admin/usuarios/apps'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Error al obtener usuarios con apps: ${response.body}');
+    }
+  }
+
   // 🔹 Asignar apps a un usuario (para administradores)
   Future<Map<String, dynamic>> asignarAppsUsuario(String userId, List<String> appIds) async {
     final response = await protectedRequest(

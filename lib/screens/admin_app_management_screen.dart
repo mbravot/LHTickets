@@ -22,6 +22,7 @@ class _AdminAppManagementScreenState extends State<AdminAppManagementScreen>
   List<dynamic> apps = [];
   List<dynamic> usuariosApps = [];
   bool isLoading = true;
+  bool isLoadingUsuarios = false;
   String? userRole;
   String? userName;
   
@@ -81,37 +82,55 @@ class _AdminAppManagementScreenState extends State<AdminAppManagementScreen>
   }
 
   Future<void> _loadUsuariosApps() async {
+    setState(() {
+      isLoadingUsuarios = true;
+    });
+    
     try {
-      // Obtener todos los usuarios y luego cargar las apps de cada uno
-      final usuariosData = await widget.apiService.getUsuarios();
-      List<dynamic> usuariosConApps = [];
-      
-      for (var usuario in usuariosData) {
-        try {
-          final appsUsuario = await widget.apiService.getUsuarioAppsById(usuario['id'].toString());
-          usuariosConApps.add({
-            ...usuario,
-            'apps': appsUsuario['apps'] ?? [],
-          });
-        } catch (e) {
-          // Si no se pueden obtener las apps, agregar el usuario sin apps
-          usuariosConApps.add({
-            ...usuario,
-            'apps': [],
-          });
-        }
-      }
+      // Usar el endpoint optimizado que obtiene todos los usuarios con sus apps en una sola llamada
+      final usuariosConApps = await widget.apiService.getUsuariosConApps();
       
       setState(() {
         usuariosApps = usuariosConApps;
+        isLoadingUsuarios = false;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Error al cargar usuarios con apps: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      // Fallback: si el endpoint optimizado no existe, usar el método anterior
+      try {
+        final usuariosData = await widget.apiService.getUsuarios();
+        List<dynamic> usuariosConApps = [];
+        
+        for (var usuario in usuariosData) {
+          try {
+            final appsUsuario = await widget.apiService.getUsuarioAppsById(usuario['id'].toString());
+            usuariosConApps.add({
+              ...usuario,
+              'apps': appsUsuario['apps'] ?? [],
+            });
+          } catch (e) {
+            // Si no se pueden obtener las apps, agregar el usuario sin apps
+            usuariosConApps.add({
+              ...usuario,
+              'apps': [],
+            });
+          }
+        }
+        
+        setState(() {
+          usuariosApps = usuariosConApps;
+          isLoadingUsuarios = false;
+        });
+      } catch (fallbackError) {
+        setState(() {
+          isLoadingUsuarios = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error al cargar usuarios con apps: $fallbackError'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -513,41 +532,61 @@ class _AdminAppManagementScreenState extends State<AdminAppManagementScreen>
           ),
           // Lista de usuarios
           Expanded(
-            child: usuariosFiltrados.isEmpty
+            child: isLoadingUsuarios
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          usuariosApps.isEmpty ? Icons.people_outline : Icons.search_off,
-                          size: 64,
-                          color: Colors.grey[400],
+                        CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
                         ),
                         SizedBox(height: 16),
                         Text(
-                          usuariosApps.isEmpty
-                              ? 'No hay usuarios con apps asignadas'
-                              : 'No se encontraron usuarios',
+                          'Cargando usuarios...',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 16,
                             color: Colors.grey[600],
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        SizedBox(height: 8),
-                        Text(
-                          usuariosApps.isEmpty
-                              ? 'Los usuarios aparecerán aquí cuando tengan apps asignadas'
-                              : 'Intenta con otro término de búsqueda',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[500],
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
                       ],
                     ),
                   )
+                : usuariosFiltrados.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              usuariosApps.isEmpty ? Icons.people_outline : Icons.search_off,
+                              size: 64,
+                              color: Colors.grey[400],
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              usuariosApps.isEmpty
+                                  ? 'No hay usuarios con apps asignadas'
+                                  : 'No se encontraron usuarios',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              usuariosApps.isEmpty
+                                  ? 'Los usuarios aparecerán aquí cuando tengan apps asignadas'
+                                  : 'Intenta con otro término de búsqueda',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[500],
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      )
                 : ListView.builder(
                     padding: EdgeInsets.symmetric(horizontal: 16),
                     itemCount: usuariosFiltrados.length,
