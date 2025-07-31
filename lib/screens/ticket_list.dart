@@ -168,17 +168,40 @@ class _TicketListScreenState extends State<TicketListScreen>
         }
       }
       // Logs de debug removidos para producción
-      // Filtrar tickets del departamento del agente
-      List<dynamic> nuevosTicketsDepartamento = departamentoAgente != null
-        ? allTickets.where((ticket) =>
-            ticket['id_departamento'] != null &&
-            int.tryParse(ticket['id_departamento'].toString()) == departamentoAgente
-          ).toList()
-        : [];
       
-      List<dynamic> nuevosMisTickets = allTickets
-          .where((ticket) => ticket['id_usuario']?.toString() == userIdStr)
-          .toList();
+      // Para agentes, usar endpoints específicos del backend
+      List<dynamic> nuevosMisTickets;
+      List<dynamic> nuevosTicketsDepartamento;
+      
+      if (userRole == "2") {
+        // Agente: usar endpoints específicos
+        try {
+          nuevosMisTickets = await widget.apiService.getMisTickets();
+          nuevosTicketsDepartamento = await widget.apiService.getTicketsMiDepartamento();
+        } catch (e) {
+          // Fallback al método anterior si fallan los endpoints específicos
+          nuevosMisTickets = allTickets
+              .where((ticket) => ticket['id_usuario']?.toString() == userIdStr)
+              .toList();
+          nuevosTicketsDepartamento = departamentoAgente != null
+            ? allTickets.where((ticket) =>
+                ticket['id_departamento'] != null &&
+                int.tryParse(ticket['id_departamento'].toString()) == departamentoAgente
+              ).toList()
+            : [];
+        }
+      } else {
+        // Usuario normal: usar método anterior
+        nuevosMisTickets = allTickets
+            .where((ticket) => ticket['id_usuario']?.toString() == userIdStr)
+            .toList();
+        nuevosTicketsDepartamento = departamentoAgente != null
+          ? allTickets.where((ticket) =>
+              ticket['id_departamento'] != null &&
+              int.tryParse(ticket['id_departamento'].toString()) == departamentoAgente
+            ).toList()
+          : [];
+      }
           
       List<dynamic> nuevosTicketsAsignados = allTickets
           .where((ticket) =>

@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart'; // Added for kDebugMode
 
 class ApiService {
   final String baseUrl = 'https://apilhtickets-927498545444.us-central1.run.app/api'; //Ruta API
-  //final String baseUrl = 'http://192.168.1.37:8080/api'; //Ruta API
+  //final String baseUrl = 'http://192.168.1.52:8080/api'; //Ruta API
 
 
   // 🔹 Obtener token guardado en SharedPreferences
@@ -1222,6 +1222,86 @@ class ApiService {
       return json.decode(response.body);
     } else {
       throw Exception('Error al reasignar el ticket: ${response.body}');
+    }
+  }
+
+  // 🔹 Obtener tickets de mi departamento (para agentes)
+  Future<List<dynamic>> getTicketsMiDepartamento() async {
+    final response = await protectedRequest(
+      (token) => http.get(
+        Uri.parse('$baseUrl/tickets/mi-departamento'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json'
+        },
+      ),
+    );
+    if (response.statusCode == 200) {
+      List<dynamic> tickets = json.decode(response.body);
+      return tickets.map((ticket) {
+        return {
+          'id': ticket['id'],
+          'id_formatted': ticket['id']?.toString().padLeft(6, '0') ?? '',
+          'titulo': ticket['titulo']?.toString() ?? 'Sin título',
+          'descripcion': ticket['descripcion']?.toString() ?? 'Sin descripción',
+          'estado': ticket['estado']?.toString() ?? 'ABIERTO',
+          'prioridad': ticket['prioridad']?.toString() ?? 'Normal',
+          'departamento': ticket['departamento'],
+          'categoria': ticket['categoria'],
+          'agente': ticket['agente']?.toString() ?? 'Sin asignar',
+          'usuario': ticket['usuario']?.toString() ?? 'Usuario desconocido',
+          'creado': ticket['fecha_creacion']?.toString() ?? '',
+          'id_usuario': ticket['id_usuario']?.toString() ?? '',
+          'id_agente': ticket['id_agente']?.toString(),
+          'id_departamento': ticket['id_departamento']?.toString(),
+          'id_categoria': ticket['id_categoria']?.toString(),
+          'id_estado': ticket['id_estado'],
+          'adjunto': ticket['adjunto']?.toString() ?? '',
+          'sucursal': ticket['sucursal'],
+        };
+      }).toList();
+    } else {
+      throw Exception('Error al obtener los tickets de mi departamento: ${response.body}');
+    }
+  }
+
+  // 🔹 Obtener mis tickets creados (para agentes)
+  Future<List<dynamic>> getMisTickets() async {
+    final response = await protectedRequest(
+      (token) => http.get(
+        Uri.parse('$baseUrl/tickets/mis-tickets'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json'
+        },
+      ),
+    );
+    if (response.statusCode == 200) {
+      List<dynamic> tickets = json.decode(response.body);
+      return tickets.map((ticket) {
+        return {
+          'id': ticket['id'],
+          'id_formatted': ticket['id']?.toString().padLeft(6, '0') ?? '',
+          'titulo': ticket['titulo']?.toString() ?? 'Sin título',
+          'descripcion': ticket['descripcion']?.toString() ?? 'Sin descripción',
+          'estado': ticket['estado']?.toString() ?? 'ABIERTO',
+          'prioridad': ticket['prioridad']?.toString() ?? 'Normal',
+          'departamento': ticket['departamento'],
+          'categoria': ticket['categoria'],
+          'agente': ticket['agente']?.toString() ?? 'Sin asignar',
+          'usuario': ticket['usuario']?.toString() ?? 'Usuario desconocido',
+          'creado': ticket['fecha_creacion']?.toString() ?? '',
+          'id_usuario': ticket['id_usuario']?.toString() ?? '',
+          'id_agente': ticket['id_agente']?.toString(),
+          'id_departamento': ticket['id_departamento']?.toString(),
+          'id_categoria': ticket['id_categoria']?.toString(),
+          'id_estado': ticket['id_estado'],
+          'adjunto': ticket['adjunto']?.toString() ?? '',
+          'sucursal': ticket['sucursal'],
+        };
+      }).toList();
+    } else {
+      throw Exception('Error al obtener mis tickets: ${response.body}');
     }
   }
 }
