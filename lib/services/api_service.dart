@@ -145,10 +145,15 @@ class ApiService {
   }
 
   // 🔹 Obtener lista de tickets
-  Future<List<dynamic>> getTickets() async {
+  Future<List<dynamic>> getTickets({bool allTickets = false}) async {
+    String url = '$baseUrl/tickets';
+    if (allTickets) {
+      url += '?all=true';
+    }
+    
     final response = await protectedRequest(
       (token) => http.get(
-        Uri.parse('$baseUrl/tickets'),
+        Uri.parse(url),
       headers: {
         'Authorization': 'Bearer $token',
           'Accept': 'application/json'
@@ -744,7 +749,7 @@ class ApiService {
         },
         body: jsonEncode({
           'comentario': comentario,
-          'fecha_cierre': DateTime.now().toIso8601String(),
+          'fecha_cierre': DateTime.now().toUtc().toIso8601String(),
         }),
       );
 
@@ -1302,6 +1307,46 @@ class ApiService {
       }).toList();
     } else {
       throw Exception('Error al obtener mis tickets: ${response.body}');
+    }
+  }
+
+  // 🔹 Obtener todos los tickets (para administradores)
+  Future<List<dynamic>> getAllTicketsAdmin() async {
+    final response = await protectedRequest(
+      (token) => http.get(
+        Uri.parse('$baseUrl/admin/tickets'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json'
+        },
+      ),
+    );
+    if (response.statusCode == 200) {
+      List<dynamic> tickets = json.decode(response.body);
+      return tickets.map((ticket) {
+        return {
+          'id': ticket['id'],
+          'id_formatted': ticket['id']?.toString().padLeft(6, '0') ?? '',
+          'titulo': ticket['titulo']?.toString() ?? 'Sin título',
+          'descripcion': ticket['descripcion']?.toString() ?? 'Sin descripción',
+          'estado': ticket['estado']?.toString() ?? 'ABIERTO',
+          'prioridad': ticket['prioridad']?.toString() ?? 'Normal',
+          'departamento': ticket['departamento'],
+          'categoria': ticket['categoria'],
+          'agente': ticket['agente']?.toString() ?? 'Sin asignar',
+          'usuario': ticket['usuario']?.toString() ?? 'Usuario desconocido',
+          'creado': ticket['fecha_creacion']?.toString() ?? '',
+          'id_usuario': ticket['id_usuario']?.toString() ?? '',
+          'id_agente': ticket['id_agente']?.toString(),
+          'id_departamento': ticket['id_departamento']?.toString(),
+          'id_categoria': ticket['id_categoria']?.toString(),
+          'id_estado': ticket['id_estado'],
+          'adjunto': ticket['adjunto']?.toString() ?? '',
+          'sucursal': ticket['sucursal'],
+        };
+      }).toList();
+    } else {
+      throw Exception('Error al obtener todos los tickets: ${response.body}');
     }
   }
 }

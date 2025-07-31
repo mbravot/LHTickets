@@ -869,13 +869,6 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          // Botón de reasignación solo para agentes y administradores
-          if (ticket['estado'] != 'CERRADO' && ticket['estado'] != 'CANCELADO')
-            IconButton(
-              icon: Icon(Icons.swap_horiz, color: primaryColor),
-              onPressed: () => _mostrarDialogoReasignacion(),
-              tooltip: 'Reasignar ticket',
-            ),
         ],
       ),
     );
@@ -1174,13 +1167,22 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
 
   String formatearComoChile(String fechaStr) {
     if (fechaStr.isEmpty) return '';
+    
     DateTime dt;
-    if (fechaStr.contains('+') || fechaStr.contains('-')) {
-      dt = DateTime.parse(fechaStr.replaceFirst(' ', 'T'));
-    } else {
-      dt = DateTime.parse(fechaStr.replaceFirst(' ', 'T') + '-04:00');
+    try {
+      // Si la fecha ya tiene zona horaria, la parseamos directamente
+      if (fechaStr.contains('+') || fechaStr.contains('-')) {
+        dt = DateTime.parse(fechaStr.replaceFirst(' ', 'T'));
+      } else {
+        // Si no tiene zona horaria, asumimos que está en UTC y la convertimos a zona local
+        dt = DateTime.parse(fechaStr.replaceFirst(' ', 'T') + 'Z').toLocal();
+      }
+      
+      return '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
+             '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
+    } catch (e) {
+      // Si hay error en el parsing, devolvemos la fecha original
+      return fechaStr;
     }
-    return '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
-           '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
   }
 }

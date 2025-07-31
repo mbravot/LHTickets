@@ -189,6 +189,7 @@ class _TicketCreateScreenState extends State<TicketCreateScreen>
         'descripcion': _descripcionController.text,
         'id_categoria': _selectedCategoriaId,
         'id_sucursal': 1, // 🔹 Reemplazar con el ID de la sucursal activa del usuario
+        'fecha_creacion': DateTime.now().toUtc().toIso8601String(), // 🔹 Enviar fecha en UTC
       };
 
       try {

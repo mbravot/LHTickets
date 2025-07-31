@@ -147,7 +147,16 @@ class _TicketListScreenState extends State<TicketListScreen>
   Future<void> _loadTickets() async {
     setState(() => isLoading = true);
     try {
-      final allTickets = await widget.apiService.getTickets();
+      List<dynamic> allTickets;
+      
+      // Para administradores, usar endpoint específico que devuelve todos los tickets
+      if (userRole == "1") {
+        // Administrador: usar endpoint con parámetro para obtener todos los tickets
+        allTickets = await widget.apiService.getTickets(allTickets: true);
+        print('🔍 DEBUG - Administrador - Endpoint con allTickets=true devolvió ${allTickets.length} tickets');
+      } else {
+        allTickets = await widget.apiService.getTickets();
+      }
       
       // Asegurarse de que userId sea un string para la comparación
       final String userIdStr = userId?.toString() ?? '';
@@ -221,6 +230,12 @@ class _TicketListScreenState extends State<TicketListScreen>
           allTickets.where((ticket) => 
               ticket['id_agente'] == null || 
               ticket['id_agente'].toString().isEmpty).toList();
+
+      // Debug: Verificar que todosLosTickets tenga todos los tickets
+      if (userRole == "1") {
+        print('🔍 DEBUG - Administrador - Total tickets recibidos: ${allTickets.length}');
+        print('🔍 DEBUG - Administrador - todosLosTickets asignados: ${nuevosTodosLosTickets.length}');
+      }
 
       setState(() {
         misTickets = nuevosMisTickets;
@@ -301,6 +316,10 @@ class _TicketListScreenState extends State<TicketListScreen>
           break;
         case 4: // Todos
           selectedList = todosLosTickets;
+          // Debug: Verificar qué se está mostrando en la pestaña "Todos"
+          if (userRole == "1") {
+            print('🔍 DEBUG - Administrador - Pestaña "Todos" - Tickets a mostrar: ${selectedList.length}');
+          }
           break;
         default:
           selectedList = ticketsAsignados;
@@ -1976,14 +1995,23 @@ class _TicketListScreenState extends State<TicketListScreen>
 
   String formatearComoChile(String fechaStr) {
     if (fechaStr.isEmpty) return '';
+    
     DateTime dt;
-    if (fechaStr.contains('+') || fechaStr.contains('-')) {
-      dt = DateTime.parse(fechaStr.replaceFirst(' ', 'T'));
-    } else {
-      dt = DateTime.parse(fechaStr.replaceFirst(' ', 'T') + '-04:00');
+    try {
+      // Si la fecha ya tiene zona horaria, la parseamos directamente
+      if (fechaStr.contains('+') || fechaStr.contains('-')) {
+        dt = DateTime.parse(fechaStr.replaceFirst(' ', 'T'));
+      } else {
+        // Si no tiene zona horaria, asumimos que está en UTC y la convertimos a zona local
+        dt = DateTime.parse(fechaStr.replaceFirst(' ', 'T') + 'Z').toLocal();
+      }
+      
+      return '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
+             '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
+    } catch (e) {
+      // Si hay error en el parsing, devolvemos la fecha original
+      return fechaStr;
     }
-    return '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
-           '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
   }
 
   Future<void> _cambiarSucursalActiva() async {
