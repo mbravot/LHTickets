@@ -1997,9 +1997,9 @@ class _TicketListScreenState extends State<TicketListScreen>
     if (fechaStr.isEmpty) return '';
     
     try {
-      // Las fechas vienen del backend en UTC, necesitamos convertirlas a zona local de Chile
+      // Las fechas vienen del backend en UTC, necesitamos sumar 4 horas para zona local de Chile
       DateTime dt = DateTime.parse(fechaStr.replaceFirst(' ', 'T') + 'Z');
-      DateTime dtChile = dt.toLocal(); // Convierte de UTC a zona local
+      DateTime dtChile = dt.add(Duration(hours: 4)); // Sumamos 4 horas para zona local de Chile
       
       return '${dtChile.year.toString().padLeft(4, '0')}-${dtChile.month.toString().padLeft(2, '0')}-${dtChile.day.toString().padLeft(2, '0')} '
              '${dtChile.hour.toString().padLeft(2, '0')}:${dtChile.minute.toString().padLeft(2, '0')}:${dtChile.second.toString().padLeft(2, '0')}';
