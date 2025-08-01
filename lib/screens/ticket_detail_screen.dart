@@ -1008,79 +1008,201 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
     final baseColor = PdfColor.fromInt(0xFF388e3c);
     final lightGrey = PdfColor.fromInt(0xFFF5F5F5);
 
+    // Función para crear el header de cada página
+    pw.Widget _buildHeader() {
+      return pw.Container(
+        padding: const pw.EdgeInsets.all(12),
+        decoration: pw.BoxDecoration(
+          color: baseColor,
+          borderRadius: pw.BorderRadius.circular(8),
+        ),
+        child: pw.Row(
+          children: [
+            pw.Text('Estado: ${ticket['estado']}', 
+              style: pw.TextStyle(
+                color: PdfColor.fromInt(0xFFFFFFFF), 
+                fontWeight: pw.FontWeight.bold, 
+                fontSize: 16,
+                font: pw.Font.helvetica(),
+              )
+            ),
+            pw.SizedBox(width: 16),
+            pw.Text('ID: #${ticket['id'].toString()}', 
+              style: pw.TextStyle(
+                color: PdfColor.fromInt(0xFFFFFFFF), 
+                fontSize: 14,
+                font: pw.Font.helvetica(),
+              )
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Función para crear la información del ticket
+    pw.Widget _buildTicketInfo() {
+      return pw.Container(
+        padding: const pw.EdgeInsets.all(12),
+        decoration: pw.BoxDecoration(
+          color: lightGrey,
+          borderRadius: pw.BorderRadius.circular(8),
+        ),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text('Información del Ticket', 
+              style: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold, 
+                fontSize: 16,
+                font: pw.Font.helvetica(),
+              )
+            ),
+            pw.Divider(),
+            pw.Text('Fecha: ${formatearComoChile(ticket['creado'])}', 
+              style: pw.TextStyle(font: pw.Font.helvetica())
+            ),
+            pw.Text('Título: ${ticket['titulo'] ?? 'Sin título'}', 
+              style: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold,
+                font: pw.Font.helvetica(),
+              )
+            ),
+            pw.Text('Creado por: ${ticket['usuario']}', 
+              style: pw.TextStyle(font: pw.Font.helvetica())
+            ),
+            pw.Text('Sucursal: ${(ticket['sucursal'] is Map && ticket['sucursal'] != null) ? (ticket['sucursal']['nombre'] ?? 'No asignada') : ticket['sucursal']?.toString() ?? 'No asignada'}', 
+              style: pw.TextStyle(font: pw.Font.helvetica())
+            ),
+            pw.Text('Departamento: ${(ticket['departamento'] is Map && ticket['departamento'] != null) ? ticket['departamento']['nombre'] : ticket['departamento']?.toString() ?? 'Sin asignar'}', 
+              style: pw.TextStyle(font: pw.Font.helvetica())
+            ),
+            pw.Text('Categoría: ${(ticket['categoria'] is Map && ticket['categoria'] != null) ? ticket['categoria']['nombre'] : ticket['categoria']?.toString() ?? 'Sin asignar'}', 
+              style: pw.TextStyle(font: pw.Font.helvetica())
+            ),
+            pw.Text('Agente: ${ticket['agente'] ?? "Sin asignar"}', 
+              style: pw.TextStyle(font: pw.Font.helvetica())
+            ),
+            pw.Text('Prioridad: ${ticket['prioridad']}', 
+              style: pw.TextStyle(font: pw.Font.helvetica())
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Función para crear la descripción
+    pw.Widget _buildDescription() {
+      return pw.Container(
+        padding: const pw.EdgeInsets.all(12),
+        decoration: pw.BoxDecoration(
+          color: lightGrey,
+          borderRadius: pw.BorderRadius.circular(8),
+        ),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text('Descripción', 
+              style: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold, 
+                fontSize: 16,
+                font: pw.Font.helvetica(),
+              )
+            ),
+            pw.Divider(),
+            pw.Text(ticket['descripcion'] ?? '', 
+              style: pw.TextStyle(font: pw.Font.helvetica())
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Función para crear los archivos adjuntos
+    pw.Widget? _buildAttachments() {
+      if (ticket['adjunto'] == null || ticket['adjunto'].isEmpty) return null;
+      
+      return pw.Container(
+        padding: const pw.EdgeInsets.all(12),
+        decoration: pw.BoxDecoration(
+          color: lightGrey,
+          borderRadius: pw.BorderRadius.circular(8),
+        ),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text('Archivos Adjuntos', 
+              style: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold, 
+                fontSize: 16,
+                font: pw.Font.helvetica(),
+              )
+            ),
+            pw.Divider(),
+            pw.Text(ticket['adjunto'].split(',').join(', '), 
+              style: pw.TextStyle(font: pw.Font.helvetica())
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Función para crear un comentario individual
+    pw.Widget _buildComment(Map<String, dynamic> comentario) {
+      return pw.Container(
+        margin: const pw.EdgeInsets.only(bottom: 8),
+        padding: const pw.EdgeInsets.all(8),
+        decoration: pw.BoxDecoration(
+          color: PdfColor.fromInt(0xFFFFFFFF),
+          borderRadius: pw.BorderRadius.circular(6),
+          border: pw.Border.all(color: PdfColor.fromInt(0xFFDDDDDD)),
+        ),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Row(
+              children: [
+                pw.Text(comentario['usuario'], 
+                  style: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    font: pw.Font.helvetica(),
+                  )
+                ),
+                pw.SizedBox(width: 12),
+                pw.Text(comentario['creado'], 
+                  style: pw.TextStyle(
+                    fontSize: 10, 
+                    color: PdfColor.fromInt(0xFF888888),
+                    font: pw.Font.helvetica(),
+                  )
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 4),
+            pw.Text(comentario['comentario'], 
+              style: pw.TextStyle(font: pw.Font.helvetica())
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Primera página con información básica y comentarios
     pdf.addPage(
       pw.Page(
         margin: const pw.EdgeInsets.all(24),
         build: (pw.Context context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            pw.Container(
-              padding: const pw.EdgeInsets.all(12),
-              decoration: pw.BoxDecoration(
-                color: baseColor,
-                borderRadius: pw.BorderRadius.circular(8),
-              ),
-              child: pw.Row(
-                children: [
-                  pw.Text('Estado: ${ticket['estado']}', style: pw.TextStyle(color: PdfColor.fromInt(0xFFFFFFFF), fontWeight: pw.FontWeight.bold, fontSize: 16)),
-                  pw.SizedBox(width: 16),
-                  pw.Text('ID: #${ticket['id'].toString()}', style: pw.TextStyle(color: PdfColor.fromInt(0xFFFFFFFF), fontSize: 14)),
-                ],
-              ),
-            ),
+            _buildHeader(),
             pw.SizedBox(height: 16),
-            pw.Container(
-              padding: const pw.EdgeInsets.all(12),
-              decoration: pw.BoxDecoration(
-                color: lightGrey,
-                borderRadius: pw.BorderRadius.circular(8),
-              ),
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Row(
-                    children: [
-                      pw.Icon(pw.IconData(0xe88e), color: baseColor), // info_outline
-                      pw.SizedBox(width: 8),
-                      pw.Text('Información del Ticket', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16)),
-                    ],
-                  ),
-                  pw.Divider(),
-                  pw.Text('Fecha: ${formatearComoChile(ticket['creado'])}'),
-                  pw.Text('Título: ${ticket['titulo'] ?? 'Sin título'}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Creado por: ${ticket['usuario']}'),
-                  pw.Text('Sucursal: ${(ticket['sucursal'] is Map && ticket['sucursal'] != null) ? (ticket['sucursal']['nombre'] ?? 'No asignada') : ticket['sucursal']?.toString() ?? 'No asignada'}'),
-                  pw.Text('Departamento: ${(ticket['departamento'] is Map && ticket['departamento'] != null) ? ticket['departamento']['nombre'] : ticket['departamento']?.toString() ?? 'Sin asignar'}'),
-                  pw.Text('Categoría: ${(ticket['categoria'] is Map && ticket['categoria'] != null) ? ticket['categoria']['nombre'] : ticket['categoria']?.toString() ?? 'Sin asignar'}'),
-                  pw.Text('Agente: ${ticket['agente'] ?? "Sin asignar"}'),
-                  pw.Text('Prioridad: ${ticket['prioridad']}'),
-                  
-                ],
-              ),
-            ),
+            _buildTicketInfo(),
             pw.SizedBox(height: 16),
-            pw.Container(
-              padding: const pw.EdgeInsets.all(12),
-              decoration: pw.BoxDecoration(
-                color: lightGrey,
-                borderRadius: pw.BorderRadius.circular(8),
-              ),
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Row(
-                    children: [
-                      pw.Icon(pw.IconData(0xe873), color: baseColor), // description
-                      pw.SizedBox(width: 8),
-                      pw.Text('Descripción', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16)),
-                    ],
-                  ),
-                  pw.Divider(),
-                  pw.Text(ticket['descripcion'] ?? ''),
-                ],
-              ),
-            ),
-            if (ticket['adjunto'] != null && ticket['adjunto'].isNotEmpty) ...[
+            _buildDescription(),
+            if (_buildAttachments() != null) ...[
+              pw.SizedBox(height: 16),
+              _buildAttachments()!,
+            ],
+            if (comentariosList.isNotEmpty) ...[
               pw.SizedBox(height: 16),
               pw.Container(
                 padding: const pw.EdgeInsets.all(12),
@@ -1091,69 +1213,110 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Row(
-                      children: [
-                        pw.Icon(pw.IconData(0xe226), color: baseColor), // attach_file
-                        pw.SizedBox(width: 8),
-                        pw.Text('Archivos Adjuntos', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16)),
-                      ],
+                    pw.Text('Comentarios', 
+                      style: pw.TextStyle(
+                        fontWeight: pw.FontWeight.bold, 
+                        fontSize: 16,
+                        font: pw.Font.helvetica(),
+                      )
                     ),
                     pw.Divider(),
-                    pw.Bullet(text: ticket['adjunto'].split(',').join(', ')),
+                    ...comentariosList.take(6).map((comentario) => _buildComment(comentario)), // Mostrar solo los primeros 6 en la primera página
                   ],
                 ),
               ),
             ],
-            pw.SizedBox(height: 16),
-            pw.Container(
-              padding: const pw.EdgeInsets.all(12),
-              decoration: pw.BoxDecoration(
-                color: lightGrey,
-                borderRadius: pw.BorderRadius.circular(8),
-              ),
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Row(
-                    children: [
-                      pw.Icon(pw.IconData(0xe0b7), color: baseColor), // comment
-                      pw.SizedBox(width: 8),
-                      pw.Text('Comentarios', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16)),
-                    ],
-                  ),
-                  pw.Divider(),
-                  if (comentariosList.isEmpty)
-                    pw.Text('No hay comentarios aún.', style: pw.TextStyle(color: PdfColor.fromInt(0xFF888888))),
-                  ...comentariosList.map((comentario) => pw.Container(
-                    margin: const pw.EdgeInsets.only(bottom: 8),
-                    padding: const pw.EdgeInsets.all(8),
-                    decoration: pw.BoxDecoration(
-                      color: PdfColor.fromInt(0xFFFFFFFF),
-                      borderRadius: pw.BorderRadius.circular(6),
-                      border: pw.Border.all(color: PdfColor.fromInt(0xFFDDDDDD)),
-                    ),
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Row(
-                          children: [
-                            pw.Text(comentario['usuario'], style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                            pw.SizedBox(width: 12),
-                            pw.Text(comentario['creado'], style: pw.TextStyle(fontSize: 10, color: PdfColor.fromInt(0xFF888888))),
-                          ],
-                        ),
-                        pw.SizedBox(height: 4),
-                        pw.Text(comentario['comentario']),
-                      ],
-                    ),
-                  )),
-                ],
-              ),
-            ),
           ],
         ),
       ),
     );
+
+    // Páginas adicionales para comentarios restantes si hay más de 6
+    if (comentariosList.length > 6) {
+      final comentariosRestantes = comentariosList.skip(6).toList();
+      final comentariosPorPagina = 8; // Número de comentarios por página adicional
+      final paginasComentarios = (comentariosRestantes.length / comentariosPorPagina).ceil();
+      
+      for (int i = 0; i < paginasComentarios; i++) {
+        final inicio = i * comentariosPorPagina;
+        final fin = (i + 1) * comentariosPorPagina;
+        final comentariosPagina = comentariosRestantes.sublist(inicio, fin > comentariosRestantes.length ? comentariosRestantes.length : fin);
+        
+        pdf.addPage(
+          pw.Page(
+            margin: const pw.EdgeInsets.all(24),
+            build: (pw.Context context) => pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                _buildHeader(),
+                pw.SizedBox(height: 16),
+                pw.Container(
+                  padding: const pw.EdgeInsets.all(12),
+                  decoration: pw.BoxDecoration(
+                    color: lightGrey,
+                    borderRadius: pw.BorderRadius.circular(8),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('Comentarios (Continuación)', 
+                        style: pw.TextStyle(
+                          fontWeight: pw.FontWeight.bold, 
+                          fontSize: 16,
+                          font: pw.Font.helvetica(),
+                        )
+                      ),
+                      pw.Divider(),
+                      ...comentariosPagina.map((comentario) => _buildComment(comentario)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    } else if (comentariosList.isEmpty) {
+      // Si no hay comentarios, agregar una página con mensaje
+      pdf.addPage(
+        pw.Page(
+          margin: const pw.EdgeInsets.all(24),
+          build: (pw.Context context) => pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              _buildHeader(),
+              pw.SizedBox(height: 16),
+              pw.Container(
+                padding: const pw.EdgeInsets.all(12),
+                decoration: pw.BoxDecoration(
+                  color: lightGrey,
+                  borderRadius: pw.BorderRadius.circular(8),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('Comentarios', 
+                      style: pw.TextStyle(
+                        fontWeight: pw.FontWeight.bold, 
+                        fontSize: 16,
+                        font: pw.Font.helvetica(),
+                      )
+                    ),
+                    pw.Divider(),
+                    pw.Text('No hay comentarios aún.', 
+                      style: pw.TextStyle(
+                        color: PdfColor.fromInt(0xFF888888),
+                        font: pw.Font.helvetica(),
+                      )
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     final pdfBytes = await pdf.save();
     final blob = html.Blob([pdfBytes], 'application/pdf');
