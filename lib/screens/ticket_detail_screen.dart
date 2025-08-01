@@ -1332,11 +1332,12 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
     if (fechaStr.isEmpty) return '';
     
     try {
-      // Parsear la fecha tal como viene del backend (ya está en zona local de Chile)
-      DateTime dt = DateTime.parse(fechaStr.replaceFirst(' ', 'T'));
+      // Las fechas vienen del backend en UTC, necesitamos convertirlas a zona local de Chile
+      DateTime dt = DateTime.parse(fechaStr.replaceFirst(' ', 'T') + 'Z');
+      DateTime dtChile = dt.toLocal(); // Convierte de UTC a zona local
       
-      return '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
-             '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
+      return '${dtChile.year.toString().padLeft(4, '0')}-${dtChile.month.toString().padLeft(2, '0')}-${dtChile.day.toString().padLeft(2, '0')} '
+             '${dtChile.hour.toString().padLeft(2, '0')}:${dtChile.minute.toString().padLeft(2, '0')}:${dtChile.second.toString().padLeft(2, '0')}';
     } catch (e) {
       // Si hay error en el parsing, devolvemos la fecha original
       return fechaStr;
