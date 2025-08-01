@@ -749,7 +749,7 @@ class ApiService {
         },
         body: jsonEncode({
           'comentario': comentario,
-          'fecha_cierre': DateTime.now().toUtc().toIso8601String(),
+          'fecha_cierre': DateTime.now().toIso8601String(), // 🔹 Enviar fecha en zona local de Chile
         }),
       );
 
@@ -768,9 +768,9 @@ class ApiService {
       String? token = await _getToken();
       if (token == null) throw Exception('Token no encontrado');
 
-      // Asegurarnos de que la fecha de actualización esté en el formato correcto y en UTC
+      // Asegurarnos de que la fecha de actualización esté en el formato correcto y en zona local
       if (datos['fecha_actualizacion'] != null) {
-        final fecha = DateTime.now().toUtc();
+        final fecha = DateTime.now();
         datos['fecha_actualizacion'] = fecha.toIso8601String();
       }
 

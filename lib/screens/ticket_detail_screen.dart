@@ -1331,16 +1331,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
   String formatearComoChile(String fechaStr) {
     if (fechaStr.isEmpty) return '';
     
-    DateTime dt;
     try {
-      // Si la fecha ya tiene zona horaria, la parseamos directamente
-      if (fechaStr.contains('+') || fechaStr.contains('-') || fechaStr.contains('Z')) {
-        dt = DateTime.parse(fechaStr.replaceFirst(' ', 'T'));
-      } else {
-        // Si no tiene zona horaria, asumimos que está en zona local de Chile
-        // Agregamos la zona horaria de Chile (-04:00)
-        dt = DateTime.parse(fechaStr.replaceFirst(' ', 'T') + '-04:00');
-      }
+      // Parsear la fecha tal como viene del backend (ya está en zona local de Chile)
+      DateTime dt = DateTime.parse(fechaStr.replaceFirst(' ', 'T'));
       
       return '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
              '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
