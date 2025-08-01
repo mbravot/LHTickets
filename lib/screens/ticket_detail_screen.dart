@@ -1334,11 +1334,12 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
     DateTime dt;
     try {
       // Si la fecha ya tiene zona horaria, la parseamos directamente
-      if (fechaStr.contains('+') || fechaStr.contains('-')) {
+      if (fechaStr.contains('+') || fechaStr.contains('-') || fechaStr.contains('Z')) {
         dt = DateTime.parse(fechaStr.replaceFirst(' ', 'T'));
       } else {
-        // Si no tiene zona horaria, asumimos que está en UTC y la convertimos a zona local
-        dt = DateTime.parse(fechaStr.replaceFirst(' ', 'T') + 'Z').toLocal();
+        // Si no tiene zona horaria, asumimos que está en zona local de Chile
+        // Agregamos la zona horaria de Chile (-04:00)
+        dt = DateTime.parse(fechaStr.replaceFirst(' ', 'T') + '-04:00');
       }
       
       return '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
