@@ -105,6 +105,9 @@ class _TicketEditScreenState extends State<TicketEditScreen>
       final departamentosData = await apiService.getDepartamentos();
       final estadosData = await apiService.getEstadosUsuarios();
 
+      // Ordenar departamentos alfabéticamente como respaldo
+      departamentosData.sort((a, b) => a['nombre'].compareTo(b['nombre']));
+
       setState(() {
         prioridades = prioridadesData;
         departamentos = departamentosData;
@@ -143,6 +146,10 @@ class _TicketEditScreenState extends State<TicketEditScreen>
     }
     try {
       final categorias = await apiService.getCategorias(departamentoId);
+      
+      // Ordenar categorías alfabéticamente como respaldo
+      categorias.sort((a, b) => a['nombre'].compareTo(b['nombre']));
+      
       setState(() {
         _categorias = categorias;
         // Si la categoría seleccionada sigue existiendo, mantenla

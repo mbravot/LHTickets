@@ -69,6 +69,9 @@ class _DepartmentManagementScreenState extends State<DepartmentManagementScreen>
       setState(() => _isLoading = true);
       final deptos = await apiService.getDepartamentos();
 
+      // Ordenar departamentos alfabéticamente como respaldo
+      deptos.sort((a, b) => a['nombre'].compareTo(b['nombre']));
+
       // Obtener agentes para cada departamento
       for (var depto in deptos) {
         try {

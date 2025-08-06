@@ -63,6 +63,9 @@ class _CategoriaManagementScreenState extends State<CategoriaManagementScreen>
       departamentos = await apiService.getDepartamentos();
       agentes = await apiService.getAgentes(); // Usar endpoint básico
       
+      // Ordenar departamentos alfabéticamente como respaldo
+      departamentos.sort((a, b) => a['nombre'].compareTo(b['nombre']));
+      
       setState(() => _isLoading = false);
     } catch (e) {
       if (kDebugMode) {
