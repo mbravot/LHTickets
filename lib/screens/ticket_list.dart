@@ -15,6 +15,7 @@ import 'package:file_picker/file_picker.dart';
 import 'department_management_screen.dart';
 import 'admin_app_management_screen.dart';
 import 'categoria_management_screen.dart';
+import 'info_page.dart';
 import 'package:flutter/foundation.dart';
 //import 'package:flutter/rendering.dart' as ui;
 // Importar dart:html solo para web
@@ -1922,6 +1923,17 @@ class _TicketListScreenState extends State<TicketListScreen>
                   MaterialPageRoute(
                     builder: (context) => ChangePasswordScreen(),
                   ),
+                );
+              },
+            ),
+            _buildDrawerItem(
+              icon: Icons.info,
+              title: "Acerca de",
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => InfoPage()),
                 );
               },
             ),
