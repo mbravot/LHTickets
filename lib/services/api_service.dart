@@ -740,6 +740,10 @@ class ApiService {
       String? token = await _getToken();
       if (token == null) throw Exception('Token no encontrado');
       
+      // 🔹 Primero agregar el comentario de cierre a la tabla de comentarios
+      await agregarComentario(ticketId, "🔒 COMENTARIO DE CIERRE: $comentario");
+      
+      // 🔹 Luego cerrar el ticket
       final response = await http.put(
         Uri.parse('$baseUrl/tickets/$ticketId/cerrar'),
         headers: {

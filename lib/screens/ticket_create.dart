@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:typed_data';
+import 'dart:html' as html;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class TicketCreateScreen extends StatefulWidget {
   const TicketCreateScreen({super.key});
@@ -24,6 +26,9 @@ class _TicketCreateScreenState extends State<TicketCreateScreen>
   List<dynamic> departamentos = [];
   List<Map<String, dynamic>> _archivosSeleccionados = [];
   final ApiService apiService = ApiService();
+  
+  // Variables para drag and drop
+  bool _isDragOver = false;
 
   // Animación
   late AnimationController _animationController;
@@ -65,11 +70,27 @@ class _TicketCreateScreenState extends State<TicketCreateScreen>
       ),
     );
     _animationController.forward();
+
+    // Configurar event listeners para drag and drop (solo en web)
+    if (kIsWeb) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _setupDragAndDrop();
+      });
+    }
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    
+    // Limpiar event listeners de drag and drop (solo en web)
+    if (kIsWeb) {
+      html.document.removeEventListener('dragenter', _onDragEnter);
+      html.document.removeEventListener('dragleave', _onDragLeave);
+      html.document.removeEventListener('dragover', _onDragOver);
+      html.document.removeEventListener('drop', _onDrop);
+    }
+    
     super.dispose();
   }
 
@@ -119,19 +140,7 @@ class _TicketCreateScreenState extends State<TicketCreateScreen>
     );
 
     if (result != null) {
-      setState(() {
-        _archivosSeleccionados = result.files.map((file) => {
-          'bytes': file.bytes,
-          'name': file.name,
-        }).toList();
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('📂 Archivos seleccionados: ${_archivosSeleccionados.length}'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      _procesarArchivosSeleccionados(result.files);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -139,6 +148,106 @@ class _TicketCreateScreenState extends State<TicketCreateScreen>
           backgroundColor: Colors.red,
         ),
       );
+    }
+  }
+
+  // Método para procesar archivos seleccionados (tanto por botón como por drag and drop)
+  void _procesarArchivosSeleccionados(List<PlatformFile> files) {
+    if (files.isEmpty) return;
+    
+    setState(() {
+      // Agregar nuevos archivos a la lista existente
+      for (var file in files) {
+        // Verificar si el archivo ya existe
+        bool archivoExiste = _archivosSeleccionados.any((archivo) => archivo['name'] == file.name);
+        if (!archivoExiste) {
+          _archivosSeleccionados.add({
+            'bytes': file.bytes,
+            'name': file.name,
+          });
+        }
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('📂 ${files.length} archivo(s) agregado(s). Total: ${_archivosSeleccionados.length}'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  // Métodos para drag and drop
+  void _onDragEnter(dynamic event) {
+    if (kIsWeb) {
+      setState(() {
+        _isDragOver = true;
+      });
+    }
+  }
+
+  void _onDragLeave(dynamic event) {
+    if (kIsWeb) {
+      setState(() {
+        _isDragOver = false;
+      });
+    }
+  }
+
+  void _onDragOver(dynamic event) {
+    if (kIsWeb) {
+      event.preventDefault();
+    }
+  }
+
+  void _onDrop(dynamic event) {
+    if (kIsWeb) {
+      event.preventDefault();
+      setState(() {
+        _isDragOver = false;
+      });
+
+      final files = event.dataTransfer.files;
+      if (files != null && files.isNotEmpty) {
+        List<PlatformFile> platformFiles = [];
+        int processedFiles = 0;
+        
+        for (int i = 0; i < files.length; i++) {
+          final file = files[i];
+          final reader = html.FileReader();
+          
+          reader.onLoad.listen((e) {
+            final bytes = reader.result as Uint8List;
+            platformFiles.add(PlatformFile(
+              name: file.name,
+              size: file.size,
+              bytes: bytes,
+            ));
+            
+            processedFiles++;
+            
+            // Si es el último archivo, procesar todos
+            if (processedFiles == files.length) {
+              _procesarArchivosSeleccionados(platformFiles);
+            }
+          });
+          
+          reader.onError.listen((e) {
+            processedFiles++;
+            print('Error al leer archivo: ${file.name}');
+            
+            // Si es el último archivo, procesar los que se pudieron leer
+            if (processedFiles == files.length) {
+              if (platformFiles.isNotEmpty) {
+                _procesarArchivosSeleccionados(platformFiles);
+              }
+            }
+          });
+          
+          reader.readAsArrayBuffer(file);
+        }
+      }
     }
   }
 
@@ -166,6 +275,80 @@ class _TicketCreateScreenState extends State<TicketCreateScreen>
         SnackBar(content: Text('Error al cargar categorías: $e'), backgroundColor: Colors.red),
       );
     }
+  }
+
+  // Configurar event listeners para drag and drop
+  void _setupDragAndDrop() {
+    if (kIsWeb) {
+      // Agregar event listeners al documento completo
+      html.document.addEventListener('dragenter', _onDragEnter);
+      html.document.addEventListener('dragleave', _onDragLeave);
+      html.document.addEventListener('dragover', _onDragOver);
+      html.document.addEventListener('drop', _onDrop);
+    }
+  }
+
+  // Widget para la zona de drag and drop
+  Widget _buildDragDropZone() {
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 200),
+      width: double.infinity,
+      height: 120,
+      decoration: BoxDecoration(
+        color: _isDragOver ? Colors.green.withOpacity(0.1) : Colors.grey[50],
+        border: Border.all(
+          color: _isDragOver ? Colors.green : Colors.grey[300]!,
+          width: _isDragOver ? 2 : 1,
+          style: BorderStyle.solid,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: _isDragOver ? [
+          BoxShadow(
+            color: Colors.green.withOpacity(0.3),
+            blurRadius: 8,
+            spreadRadius: 2,
+          )
+        ] : null,
+      ),
+      child: GestureDetector(
+        onTap: _seleccionarArchivo,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedScale(
+                scale: _isDragOver ? 1.1 : 1.0,
+                duration: Duration(milliseconds: 200),
+                child: Icon(
+                  _isDragOver ? Icons.cloud_upload : Icons.cloud_upload_outlined,
+                  size: 40,
+                  color: _isDragOver ? Colors.green : Colors.grey[600],
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                _isDragOver ? 'Soltar archivos aquí' : 'Arrastra archivos aquí o haz clic',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: _isDragOver ? Colors.green : Colors.grey[700],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Formatos soportados: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, etc.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[500],
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   // Modificar el método _onDepartamentoChanged para usar int
@@ -414,16 +597,22 @@ class _TicketCreateScreenState extends State<TicketCreateScreen>
                   title: 'Archivos Adjuntos',
                   icon: Icons.attach_file,
                   children: [
-                    ElevatedButton.icon(
-                      onPressed: _seleccionarArchivo,
-                      icon: const Icon(Icons.attach_file),
-                      label: const Text('Seleccionar Archivos'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
-                        foregroundColor: secondaryColor,
-                        padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                    // Zona de drag and drop
+                    _buildDragDropZone(),
+                    SizedBox(height: 16),
+                    // Botón alternativo
+                    Center(
+                      child: ElevatedButton.icon(
+                        onPressed: _seleccionarArchivo,
+                        icon: const Icon(Icons.folder_open),
+                        label: const Text('Buscar Archivos'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey[200],
+                          foregroundColor: Colors.grey[700],
+                          padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       ),
                     ),
