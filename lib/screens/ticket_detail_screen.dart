@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:printing/printing.dart';
-import 'package:pdf/widgets.dart' as pw;
 import 'dart:html' as html;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:pdf/pdf.dart';
 import 'package:intl/intl.dart';
 
 class TicketDetailScreen extends StatefulWidget {
@@ -996,6 +993,16 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
   }
 
   Future<void> _descargarTicketPDF(Map<String, dynamic> ticket) async {
+    try {
+      // Mostrar indicador de carga
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('🔄 Generando archivo...'),
+          backgroundColor: Colors.blue,
+          duration: Duration(seconds: 2),
+        ),
+      );
+
     // Obtener comentarios
     List<dynamic> comentariosList = [];
     try {
@@ -1004,296 +1011,152 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
       comentariosList = [];
     }
 
-    final pdf = pw.Document();
-    final baseColor = PdfColor.fromInt(0xFF388e3c);
-    final lightGrey = PdfColor.fromInt(0xFFF5F5F5);
-
-    // Función para crear el header de cada página
-    pw.Widget _buildHeader() {
-      return pw.Container(
-        padding: const pw.EdgeInsets.all(12),
-        decoration: pw.BoxDecoration(
-          color: baseColor,
-          borderRadius: pw.BorderRadius.circular(8),
-        ),
-        child: pw.Row(
-          children: [
-            pw.Text('Estado: ${ticket['estado']}', 
-              style: pw.TextStyle(
-                color: PdfColor.fromInt(0xFFFFFFFF), 
-                fontWeight: pw.FontWeight.bold, 
-                fontSize: 16,
-                font: pw.Font.helvetica(),
-              )
-            ),
-            pw.SizedBox(width: 16),
-            pw.Text('ID: #${ticket['id'].toString()}', 
-              style: pw.TextStyle(
-                color: PdfColor.fromInt(0xFFFFFFFF), 
-                fontSize: 14,
-                font: pw.Font.helvetica(),
-              )
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Función para crear la información del ticket
-    pw.Widget _buildTicketInfo() {
-      return pw.Container(
-        padding: const pw.EdgeInsets.all(12),
-        decoration: pw.BoxDecoration(
-          color: lightGrey,
-          borderRadius: pw.BorderRadius.circular(8),
-        ),
-        child: pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Text('Información del Ticket', 
-              style: pw.TextStyle(
-                fontWeight: pw.FontWeight.bold, 
-                fontSize: 16,
-                font: pw.Font.helvetica(),
-              )
-            ),
-            pw.Divider(),
-            pw.Text('Fecha: ${formatearComoChile(ticket['creado'])}', 
-              style: pw.TextStyle(font: pw.Font.helvetica())
-            ),
-            pw.Text('Título: ${ticket['titulo'] ?? 'Sin título'}', 
-              style: pw.TextStyle(
-                fontWeight: pw.FontWeight.bold,
-                font: pw.Font.helvetica(),
-              )
-            ),
-            pw.Text('Creado por: ${ticket['usuario']}', 
-              style: pw.TextStyle(font: pw.Font.helvetica())
-            ),
-            pw.Text('Sucursal: ${(ticket['sucursal'] is Map && ticket['sucursal'] != null) ? (ticket['sucursal']['nombre'] ?? 'No asignada') : ticket['sucursal']?.toString() ?? 'No asignada'}', 
-              style: pw.TextStyle(font: pw.Font.helvetica())
-            ),
-            pw.Text('Departamento: ${(ticket['departamento'] is Map && ticket['departamento'] != null) ? ticket['departamento']['nombre'] : ticket['departamento']?.toString() ?? 'Sin asignar'}', 
-              style: pw.TextStyle(font: pw.Font.helvetica())
-            ),
-            pw.Text('Categoría: ${(ticket['categoria'] is Map && ticket['categoria'] != null) ? ticket['categoria']['nombre'] : ticket['categoria']?.toString() ?? 'Sin asignar'}', 
-              style: pw.TextStyle(font: pw.Font.helvetica())
-            ),
-            pw.Text('Agente: ${ticket['agente'] ?? "Sin asignar"}', 
-              style: pw.TextStyle(font: pw.Font.helvetica())
-            ),
-            pw.Text('Prioridad: ${ticket['prioridad']}', 
-              style: pw.TextStyle(font: pw.Font.helvetica())
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Función para crear la descripción
-    pw.Widget _buildDescription() {
-      return pw.Container(
-        padding: const pw.EdgeInsets.all(12),
-        decoration: pw.BoxDecoration(
-          color: lightGrey,
-          borderRadius: pw.BorderRadius.circular(8),
-        ),
-        child: pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Text('Descripción', 
-              style: pw.TextStyle(
-                fontWeight: pw.FontWeight.bold, 
-                fontSize: 16,
-                font: pw.Font.helvetica(),
-              )
-            ),
-            pw.Divider(),
-            pw.Text(ticket['descripcion'] ?? '', 
-              style: pw.TextStyle(font: pw.Font.helvetica()),
-              softWrap: true,
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Función para crear los archivos adjuntos
-    pw.Widget? _buildAttachments() {
-      if (ticket['adjunto'] == null || ticket['adjunto'].isEmpty) return null;
-      
-      return pw.Container(
-        padding: const pw.EdgeInsets.all(12),
-        decoration: pw.BoxDecoration(
-          color: lightGrey,
-          borderRadius: pw.BorderRadius.circular(8),
-        ),
-        child: pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Text('Archivos Adjuntos', 
-              style: pw.TextStyle(
-                fontWeight: pw.FontWeight.bold, 
-                fontSize: 16,
-                font: pw.Font.helvetica(),
-              )
-            ),
-            pw.Divider(),
-            pw.Text(ticket['adjunto'].split(',').join(', '), 
-              style: pw.TextStyle(font: pw.Font.helvetica())
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Función para crear un comentario individual
-    pw.Widget _buildComment(Map<String, dynamic> comentario) {
-      return pw.Container(
-        margin: const pw.EdgeInsets.only(bottom: 8),
-        padding: const pw.EdgeInsets.all(8),
-        decoration: pw.BoxDecoration(
-          color: PdfColor.fromInt(0xFFFFFFFF),
-          borderRadius: pw.BorderRadius.circular(6),
-          border: pw.Border.all(color: PdfColor.fromInt(0xFFDDDDDD)),
-        ),
-        child: pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Row(
-              children: [
-                pw.Text(comentario['usuario'], 
-                  style: pw.TextStyle(
-                    fontWeight: pw.FontWeight.bold,
-                    font: pw.Font.helvetica(),
-                  )
-                ),
-                pw.SizedBox(width: 12),
-                pw.Text(comentario['creado'], 
-                  style: pw.TextStyle(
-                    fontSize: 10, 
-                    color: PdfColor.fromInt(0xFF888888),
-                    font: pw.Font.helvetica(),
-                  )
-                ),
-              ],
-            ),
-            pw.SizedBox(height: 4),
-            pw.Text(comentario['comentario'], 
-              style: pw.TextStyle(font: pw.Font.helvetica()),
-              softWrap: true,
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Función para crear una página de comentarios
-    pw.Widget _buildCommentsPage(List<dynamic> comentarios, String titulo) {
-      return pw.Container(
-        padding: const pw.EdgeInsets.all(12),
-        decoration: pw.BoxDecoration(
-          color: lightGrey,
-          borderRadius: pw.BorderRadius.circular(8),
-        ),
-        child: pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Text(titulo, 
-              style: pw.TextStyle(
-                fontWeight: pw.FontWeight.bold, 
-                fontSize: 16,
-                font: pw.Font.helvetica(),
-              )
-            ),
-            pw.Divider(),
-            if (comentarios.isEmpty) ...[
-              pw.Text('No hay comentarios aún.', 
-                style: pw.TextStyle(
-                  color: PdfColor.fromInt(0xFF888888),
-                  font: pw.Font.helvetica(),
-                )
-              ),
-            ] else ...[
-              ...comentarios.map((comentario) => _buildComment(comentario)),
-            ],
-          ],
-        ),
-      );
-    }
-
-    // Primera página con información básica
-    List<pw.Widget> primeraPaginaWidgets = [
-      _buildHeader(),
-      pw.SizedBox(height: 16),
-      _buildTicketInfo(),
-      pw.SizedBox(height: 16),
-      _buildDescription(),
-    ];
-
-    // Agregar archivos adjuntos si existen
-    if (_buildAttachments() != null) {
-      primeraPaginaWidgets.addAll([
-        pw.SizedBox(height: 16),
-        _buildAttachments()!,
-      ]);
-    }
-
-    // Agregar comentarios a la primera página (hasta 4 comentarios para dejar espacio)
-    final comentariosPrimeraPagina = comentariosList.take(4).toList();
-    primeraPaginaWidgets.addAll([
-      pw.SizedBox(height: 16),
-      _buildCommentsPage(comentariosPrimeraPagina, 'Comentarios'),
-    ]);
-
-    pdf.addPage(
-      pw.Page(
-        margin: const pw.EdgeInsets.all(24),
-        build: (pw.Context context) => pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: primeraPaginaWidgets,
-        ),
-      ),
-    );
-
-    // Páginas adicionales para comentarios restantes
-    if (comentariosList.length > 4) {
-      final comentariosRestantes = comentariosList.skip(4).toList();
-      final comentariosPorPagina = 10; // Más comentarios por página adicional
-      final paginasComentarios = (comentariosRestantes.length / comentariosPorPagina).ceil();
-      
-      for (int i = 0; i < paginasComentarios; i++) {
-        final inicio = i * comentariosPorPagina;
-        final fin = (i + 1) * comentariosPorPagina;
-        final comentariosPagina = comentariosRestantes.sublist(
-          inicio, 
-          fin > comentariosRestantes.length ? comentariosRestantes.length : fin
-        );
+      // Crear contenido HTML simple
+      String htmlContent = '''
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Ticket #${ticket['id']}</title>
+    <style>
+        @media print {
+            body { margin: 0; background-color: white; }
+            .container { max-width: none; box-shadow: none; }
+            .header { background-color: #388e3c !important; -webkit-print-color-adjust: exact; }
+            .section { background-color: #f8f9fa !important; -webkit-print-color-adjust: exact; }
+            .comment { background-color: white !important; -webkit-print-color-adjust: exact; }
+            .print-button { display: none !important; }
+        }
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header { background-color: #388e3c; color: white; padding: 16px; border-radius: 8px; margin-bottom: 20px; }
+        .section { background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
+        .section h3 { margin-top: 0; color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 8px; }
+        .comment { background-color: white; border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; margin-bottom: 12px; }
+        .comment-header { font-weight: bold; color: #495057; margin-bottom: 4px; }
+        .comment-content { color: #212529; }
+        .info-row { margin-bottom: 8px; }
+        .label { font-weight: bold; color: #495057; }
+        .print-button { 
+            background-color: #388e3c; 
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 6px; 
+            font-size: 16px; 
+            cursor: pointer; 
+            margin: 20px 0; 
+            display: block; 
+            width: 100%;
+            font-weight: bold;
+        }
+        .print-button:hover { 
+            background-color: #2e7d32; 
+        }
+        .instructions { 
+            background-color: #e3f2fd; 
+            border: 1px solid #2196f3; 
+            border-radius: 6px; 
+            padding: 12px; 
+            margin: 20px 0; 
+            color: #1976d2; 
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Ticket #${ticket['id']} - ${ticket['estado']}</h2>
+        </div>
         
-        pdf.addPage(
-          pw.Page(
-            margin: const pw.EdgeInsets.all(24),
-            build: (pw.Context context) => pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                _buildHeader(),
-                pw.SizedBox(height: 16),
-                _buildCommentsPage(comentariosPagina, 'Comentarios (Continuación)'),
-              ],
-            ),
+        <div class="section">
+            <h3>Información del Ticket</h3>
+            <div class="info-row"><span class="label">Fecha:</span> ${formatearComoChile(ticket['creado'])}</div>
+            <div class="info-row"><span class="label">Título:</span> ${ticket['titulo'] ?? 'Sin título'}</div>
+            <div class="info-row"><span class="label">Usuario:</span> ${ticket['usuario']}</div>
+            <div class="info-row"><span class="label">Sucursal:</span> ${(ticket['sucursal'] is Map && ticket['sucursal'] != null) ? (ticket['sucursal']['nombre'] ?? 'No asignada') : ticket['sucursal']?.toString() ?? 'No asignada'}</div>
+            <div class="info-row"><span class="label">Departamento:</span> ${(ticket['departamento'] is Map && ticket['departamento'] != null) ? ticket['departamento']['nombre'] : ticket['departamento']?.toString() ?? 'Sin asignar'}</div>
+            <div class="info-row"><span class="label">Categoría:</span> ${(ticket['categoria'] is Map && ticket['categoria'] != null) ? ticket['categoria']['nombre'] : ticket['categoria']?.toString() ?? 'Sin asignar'}</div>
+            <div class="info-row"><span class="label">Agente:</span> ${ticket['agente'] ?? "Sin asignar"}</div>
+            <div class="info-row"><span class="label">Prioridad:</span> ${ticket['prioridad']}</div>
+        </div>
+        
+        <div class="section">
+            <h3>Descripción</h3>
+            <p>${ticket['descripcion'] ?? ''}</p>
+        </div>
+        
+        <div class="section">
+            <h3>Comentarios</h3>
+            ${comentariosList.isEmpty ? '<p style="color: #6c757d;">No hay comentarios aún.</p>' : comentariosList.map((comentario) => '''
+                <div class="comment">
+                    <div class="comment-header">${comentario['usuario']} - ${comentario['creado']}</div>
+                    <div class="comment-content">${comentario['comentario']}</div>
+                </div>
+            ''').join('')}
+        </div>
+        
+        <button class="print-button" onclick="window.print()">
+            🖨️ Imprimir como PDF
+        </button>
+    </div>
+</body>
+</html>
+      ''';
+
+      // Crear blob con contenido HTML
+      final blob = html.Blob([htmlContent], 'text/html');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      
+      // Abrir en nueva ventana
+      html.window.open(url, '_blank');
+      
+      html.Url.revokeObjectUrl(url);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ Archivo abierto. Presiona Ctrl+P para imprimir como PDF'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error al generar archivo: $e'),
+          backgroundColor: Colors.red,
           ),
         );
       }
-    }
+  }
 
-    final pdfBytes = await pdf.save();
-    final blob = html.Blob([pdfBytes], 'application/pdf');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    final fileName = 'ticket${ticket['id']}.pdf';
-    final anchor = html.AnchorElement(href: url)
-      ..setAttribute('download', fileName)
-      ..click();
-    html.Url.revokeObjectUrl(url);
+  Widget _buildInfoRowPDF(IconData icon, String label, String value) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+            children: [
+          Icon(icon, size: 16, color: Colors.blue),
+          SizedBox(width: 8),
+          Text(
+            "$label: ",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[800],
+              fontSize: 14,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                color: Colors.grey[800],
+                fontSize: 14,
+              ),
+                ),
+              ),
+            ],
+      ),
+    );
   }
 
   String formatearComoChile(String fechaStr) {

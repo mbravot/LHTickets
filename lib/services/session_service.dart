@@ -72,10 +72,10 @@ class SessionService {
           final refreshedToken = await _apiService.refreshToken(refreshToken);
           await prefs.setString('jwt_token', refreshedToken);
           await prefs.setInt('session_start_time', currentTime);
-          print('✅ Token renovado automáticamente');
+  
         }
       } catch (e) {
-        print('❌ Error al renovar el token: $e');
+
         // Si hay un error al renovar, limpiar la sesión y redirigir al login
         await _handleTokenExpiration();
       }
@@ -147,7 +147,7 @@ class SessionService {
         await prefs.setInt('session_start_time', currentTime);
         return true;
       } catch (e) {
-        print('❌ Error al verificar la sesión: $e');
+
         return false;
       }
     }

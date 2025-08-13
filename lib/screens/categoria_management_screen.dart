@@ -69,7 +69,7 @@ class _CategoriaManagementScreenState extends State<CategoriaManagementScreen>
       setState(() => _isLoading = false);
     } catch (e) {
       if (kDebugMode) {
-        print('🔍 DEBUG - Error al cargar datos: $e');
+  
       }
       setState(() => _isLoading = false);
     }
@@ -286,11 +286,7 @@ class _CategoriaManagementScreenState extends State<CategoriaManagementScreen>
     bool _isLoading = false;
 
     if (kDebugMode) {
-      print('🔍 DEBUG - _mostrarFormularioCategoria inicializado con:');
-      print('  Categoría: ${categoria?['nombre']}');
-      print('  ID: ${categoria?['id']}');
-      print('  Departamento seleccionado: $_selectedDepartamento');
-      print('  Usuario seleccionado: $_selectedUsuario');
+      
     }
 
     // Cargar agentes disponibles si hay departamento seleccionado
@@ -302,12 +298,12 @@ class _CategoriaManagementScreenState extends State<CategoriaManagementScreen>
         // Si no hay agentes disponibles, mostrar mensaje
         if (_agentesDisponibles.isEmpty) {
           if (kDebugMode) {
-            print('🔍 DEBUG - No hay agentes disponibles para el departamento $_selectedDepartamento');
+  
           }
         }
       } catch (e) {
         if (kDebugMode) {
-          print('🔍 DEBUG - Error al cargar agentes: $e');
+
         }
         _agentesDisponibles = [];
       }
@@ -391,12 +387,12 @@ class _CategoriaManagementScreenState extends State<CategoriaManagementScreen>
                           // Si no hay agentes disponibles, mostrar mensaje
                           if (_agentesDisponibles.isEmpty) {
                             if (kDebugMode) {
-                              print('🔍 DEBUG - No hay agentes disponibles para el departamento $value');
+                  
                             }
                           }
                         } catch (e) {
                           if (kDebugMode) {
-                            print('🔍 DEBUG - Error al filtrar agentes: $e');
+                
                           }
                           _agentesDisponibles = [];
                         }

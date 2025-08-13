@@ -235,7 +235,7 @@ class _TicketCreateScreenState extends State<TicketCreateScreen>
           
           reader.onError.listen((e) {
             processedFiles++;
-            print('Error al leer archivo: ${file.name}');
+    
             
             // Si es el último archivo, procesar los que se pudieron leer
             if (processedFiles == files.length) {
@@ -525,7 +525,7 @@ class _TicketCreateScreenState extends State<TicketCreateScreen>
                       _descripcionController,
                       'Descripción',
                       Icons.description,
-                      maxLines: 5,
+                      maxLines: 10,
                     ),
                   ],
                 ),

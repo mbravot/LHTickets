@@ -154,7 +154,7 @@ class _TicketListScreenState extends State<TicketListScreen>
       if (userRole == "1") {
         // Administrador: usar endpoint con parámetro para obtener todos los tickets
         allTickets = await widget.apiService.getTickets(allTickets: true);
-        print('🔍 DEBUG - Administrador - Endpoint con allTickets=true devolvió ${allTickets.length} tickets');
+
       } else {
         allTickets = await widget.apiService.getTickets();
       }
@@ -234,8 +234,7 @@ class _TicketListScreenState extends State<TicketListScreen>
 
       // Debug: Verificar que todosLosTickets tenga todos los tickets
       if (userRole == "1") {
-        print('🔍 DEBUG - Administrador - Total tickets recibidos: ${allTickets.length}');
-        print('🔍 DEBUG - Administrador - todosLosTickets asignados: ${nuevosTodosLosTickets.length}');
+
       }
 
       setState(() {
@@ -319,7 +318,7 @@ class _TicketListScreenState extends State<TicketListScreen>
           selectedList = todosLosTickets;
           // Debug: Verificar qué se está mostrando en la pestaña "Todos"
           if (userRole == "1") {
-            print('🔍 DEBUG - Administrador - Pestaña "Todos" - Tickets a mostrar: ${selectedList.length}');
+    
           }
           break;
         default:
@@ -368,13 +367,15 @@ class _TicketListScreenState extends State<TicketListScreen>
               ticket['departamento']?.toString().toLowerCase() ?? '';
           final categoria =
               ticket['categoria']?.toString().toLowerCase() ?? '';
+          final id = ticket['id']?.toString().toLowerCase() ?? '';
 
           return titulo.contains(query.toLowerCase()) ||
               agente.contains(query.toLowerCase()) ||
               usuario.contains(query.toLowerCase()) ||
               estado.contains(query.toLowerCase()) ||
               departamento.contains(query.toLowerCase()) ||
-              categoria.contains(query.toLowerCase());
+              categoria.contains(query.toLowerCase()) ||
+              id.contains(query.toLowerCase());
         }).toList();
       }
     });
@@ -929,7 +930,7 @@ class _TicketListScreenState extends State<TicketListScreen>
               );
               archivosSubidos.add(file.name);
               archivosProcesados.add(file.name);
-              print("✅ Archivo subido exitosamente: ${file.name}");
+      
             }
           } catch (e) {
             // Error al subir archivo
@@ -1016,7 +1017,7 @@ class _TicketListScreenState extends State<TicketListScreen>
           child: TextField(
             controller: searchController,
             decoration: InputDecoration(
-              hintText: 'Buscar tickets...',
+              hintText: 'Buscar por ID, título, agente, usuario...',
               prefixIcon: Icon(Icons.search, color: primaryColor),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),

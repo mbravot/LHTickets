@@ -94,8 +94,7 @@ class _AdminAppManagementScreenState extends State<AdminAppManagementScreen>
         isLoadingUsuarios = false;
       });
     } catch (e) {
-      print('❌ Endpoint optimizado falló: $e');
-      print('🔄 Usando fallback con carga en paralelo...');
+      
       
       try {
         final usuariosData = await widget.apiService.getUsuarios();
@@ -110,11 +109,11 @@ class _AdminAppManagementScreenState extends State<AdminAppManagementScreen>
         });
         
         // Cargar apps en paralelo para mejorar la experiencia del usuario
-        print('🔄 Cargando apps en paralelo...');
+
         await _cargarAppsEnParalelo(usuariosData);
         
       } catch (fallbackError) {
-        print('❌ Error en fallback: $fallbackError');
+
         setState(() {
           isLoadingUsuarios = false;
         });
@@ -146,9 +145,9 @@ class _AdminAppManagementScreenState extends State<AdminAppManagementScreen>
         usuariosApps = resultados;
       });
       
-      print('✅ Apps cargadas en paralelo para ${resultados.length} usuarios');
+      
     } catch (e) {
-      print('⚠️ Error cargando apps en paralelo: $e');
+      
     }
   }
 
@@ -161,7 +160,7 @@ class _AdminAppManagementScreenState extends State<AdminAppManagementScreen>
         'apps': appsUsuario['apps'] ?? [],
       };
     } catch (e) {
-      print('⚠️ Error cargando apps para ${usuario['nombre']}: $e');
+      
       return {
         ...usuario,
         'apps': [],

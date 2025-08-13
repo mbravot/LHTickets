@@ -67,9 +67,7 @@ class _TicketEditScreenState extends State<TicketEditScreen>
         : int.tryParse(widget.ticket['id_estado']?.toString() ?? '');
     _selectedCategoriaId = widget.ticket['id_categoria']?.toString();
     // Prints para depuración
-    print('INIT _prioridad:  [32m'+_prioridad.toString()+'\x1b[0m');
-    print('INIT _departamento:  [32m'+_departamento.toString()+'\x1b[0m');
-    print('INIT _estado:  [32m'+_estado.toString()+'\x1b[0m');
+
 
     // Inicializar animación
     _animationController = AnimationController(
