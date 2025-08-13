@@ -1110,7 +1110,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
             ),
             pw.Divider(),
             pw.Text(ticket['descripcion'] ?? '', 
-              style: pw.TextStyle(font: pw.Font.helvetica())
+              style: pw.TextStyle(font: pw.Font.helvetica()),
+              softWrap: true,
             ),
           ],
         ),
@@ -1179,68 +1180,95 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
             ),
             pw.SizedBox(height: 4),
             pw.Text(comentario['comentario'], 
-              style: pw.TextStyle(font: pw.Font.helvetica())
+              style: pw.TextStyle(font: pw.Font.helvetica()),
+              softWrap: true,
             ),
           ],
         ),
       );
     }
 
-    // Primera página con información básica y comentarios
+    // Función para crear una página de comentarios
+    pw.Widget _buildCommentsPage(List<dynamic> comentarios, String titulo) {
+      return pw.Container(
+        padding: const pw.EdgeInsets.all(12),
+        decoration: pw.BoxDecoration(
+          color: lightGrey,
+          borderRadius: pw.BorderRadius.circular(8),
+        ),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text(titulo, 
+              style: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold, 
+                fontSize: 16,
+                font: pw.Font.helvetica(),
+              )
+            ),
+            pw.Divider(),
+            if (comentarios.isEmpty) ...[
+              pw.Text('No hay comentarios aún.', 
+                style: pw.TextStyle(
+                  color: PdfColor.fromInt(0xFF888888),
+                  font: pw.Font.helvetica(),
+                )
+              ),
+            ] else ...[
+              ...comentarios.map((comentario) => _buildComment(comentario)),
+            ],
+          ],
+        ),
+      );
+    }
+
+    // Primera página con información básica
+    List<pw.Widget> primeraPaginaWidgets = [
+      _buildHeader(),
+      pw.SizedBox(height: 16),
+      _buildTicketInfo(),
+      pw.SizedBox(height: 16),
+      _buildDescription(),
+    ];
+
+    // Agregar archivos adjuntos si existen
+    if (_buildAttachments() != null) {
+      primeraPaginaWidgets.addAll([
+        pw.SizedBox(height: 16),
+        _buildAttachments()!,
+      ]);
+    }
+
+    // Agregar comentarios a la primera página (hasta 4 comentarios para dejar espacio)
+    final comentariosPrimeraPagina = comentariosList.take(4).toList();
+    primeraPaginaWidgets.addAll([
+      pw.SizedBox(height: 16),
+      _buildCommentsPage(comentariosPrimeraPagina, 'Comentarios'),
+    ]);
+
     pdf.addPage(
       pw.Page(
         margin: const pw.EdgeInsets.all(24),
         build: (pw.Context context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            _buildHeader(),
-            pw.SizedBox(height: 16),
-            _buildTicketInfo(),
-            pw.SizedBox(height: 16),
-            _buildDescription(),
-            if (_buildAttachments() != null) ...[
-              pw.SizedBox(height: 16),
-              _buildAttachments()!,
-            ],
-            if (comentariosList.isNotEmpty) ...[
-              pw.SizedBox(height: 16),
-              pw.Container(
-                padding: const pw.EdgeInsets.all(12),
-                decoration: pw.BoxDecoration(
-                  color: lightGrey,
-                  borderRadius: pw.BorderRadius.circular(8),
-                ),
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text('Comentarios', 
-                      style: pw.TextStyle(
-                        fontWeight: pw.FontWeight.bold, 
-                        fontSize: 16,
-                        font: pw.Font.helvetica(),
-                      )
-                    ),
-                    pw.Divider(),
-                    ...comentariosList.take(6).map((comentario) => _buildComment(comentario)), // Mostrar solo los primeros 6 en la primera página
-                  ],
-                ),
-              ),
-            ],
-          ],
+          children: primeraPaginaWidgets,
         ),
       ),
     );
 
-    // Páginas adicionales para comentarios restantes si hay más de 6
-    if (comentariosList.length > 6) {
-      final comentariosRestantes = comentariosList.skip(6).toList();
-      final comentariosPorPagina = 8; // Número de comentarios por página adicional
+    // Páginas adicionales para comentarios restantes
+    if (comentariosList.length > 4) {
+      final comentariosRestantes = comentariosList.skip(4).toList();
+      final comentariosPorPagina = 10; // Más comentarios por página adicional
       final paginasComentarios = (comentariosRestantes.length / comentariosPorPagina).ceil();
       
       for (int i = 0; i < paginasComentarios; i++) {
         final inicio = i * comentariosPorPagina;
         final fin = (i + 1) * comentariosPorPagina;
-        final comentariosPagina = comentariosRestantes.sublist(inicio, fin > comentariosRestantes.length ? comentariosRestantes.length : fin);
+        final comentariosPagina = comentariosRestantes.sublist(
+          inicio, 
+          fin > comentariosRestantes.length ? comentariosRestantes.length : fin
+        );
         
         pdf.addPage(
           pw.Page(
@@ -1250,72 +1278,12 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
               children: [
                 _buildHeader(),
                 pw.SizedBox(height: 16),
-                pw.Container(
-                  padding: const pw.EdgeInsets.all(12),
-                  decoration: pw.BoxDecoration(
-                    color: lightGrey,
-                    borderRadius: pw.BorderRadius.circular(8),
-                  ),
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text('Comentarios (Continuación)', 
-                        style: pw.TextStyle(
-                          fontWeight: pw.FontWeight.bold, 
-                          fontSize: 16,
-                          font: pw.Font.helvetica(),
-                        )
-                      ),
-                      pw.Divider(),
-                      ...comentariosPagina.map((comentario) => _buildComment(comentario)),
-                    ],
-                  ),
-                ),
+                _buildCommentsPage(comentariosPagina, 'Comentarios (Continuación)'),
               ],
             ),
           ),
         );
       }
-    } else if (comentariosList.isEmpty) {
-      // Si no hay comentarios, agregar una página con mensaje
-      pdf.addPage(
-        pw.Page(
-          margin: const pw.EdgeInsets.all(24),
-          build: (pw.Context context) => pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              _buildHeader(),
-              pw.SizedBox(height: 16),
-              pw.Container(
-                padding: const pw.EdgeInsets.all(12),
-                decoration: pw.BoxDecoration(
-                  color: lightGrey,
-                  borderRadius: pw.BorderRadius.circular(8),
-                ),
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text('Comentarios', 
-                      style: pw.TextStyle(
-                        fontWeight: pw.FontWeight.bold, 
-                        fontSize: 16,
-                        font: pw.Font.helvetica(),
-                      )
-                    ),
-                    pw.Divider(),
-                    pw.Text('No hay comentarios aún.', 
-                      style: pw.TextStyle(
-                        color: PdfColor.fromInt(0xFF888888),
-                        font: pw.Font.helvetica(),
-                      )
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
     }
 
     final pdfBytes = await pdf.save();
