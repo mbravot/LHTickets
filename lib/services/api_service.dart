@@ -762,10 +762,7 @@ class ApiService {
       String? token = await _getToken();
       if (token == null) throw Exception('Token no encontrado');
       
-      // 🔹 Primero agregar el comentario de cierre a la tabla de comentarios (sin enviar correo)
-      await agregarComentarioCierre(ticketId, "🔒 COMENTARIO DE CIERRE: $comentario");
-      
-      // 🔹 Luego cerrar el ticket (esto enviará el correo de cierre con el comentario incluido)
+      // 🔹 Cerrar el ticket (el backend guardará el comentario y enviará el correo con el comentario incluido)
       final response = await http.put(
         Uri.parse('$baseUrl/tickets/$ticketId/cerrar'),
         headers: {
@@ -774,8 +771,8 @@ class ApiService {
           'Authorization': 'Bearer $token',
         },
         body: jsonEncode({
-          'comentario': comentario,
-          'fecha_cierre': DateTime.now().toIso8601String(), // 🔹 Enviar fecha en zona local de Chile
+          'comentario_cierre': comentario, // 🔹 Cambiado a comentario_cierre para que el backend lo incluya en el correo
+          'fecha_cierre': DateTime.now().toIso8601String(),
         }),
       );
 
