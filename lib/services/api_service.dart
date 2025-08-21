@@ -592,6 +592,28 @@ class ApiService {
     }
   }
 
+  // Método para agregar comentario de cierre (sin enviar correo de comentario)
+  Future<void> agregarComentarioCierre(String ticketId, String comentario) async {
+    String? token = await _getToken();
+    if (token == null) throw Exception('Token no encontrado');
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/tickets/$ticketId/comentarios'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: json.encode({
+        'comentario': comentario,
+        'es_comentario_cierre': true, // 🔹 Flag para indicar que es comentario de cierre
+      }),
+    );
+
+    if (response.statusCode != 201) {
+      throw Exception('Error al agregar comentario de cierre: ${response.body}');
+    }
+  }
+
 // Metodo para cambiar estado al ticket
   Future<void> cambiarEstadoTicket(String ticketId, String nuevoEstado) async {
     final prefs = await SharedPreferences.getInstance();
@@ -740,10 +762,10 @@ class ApiService {
       String? token = await _getToken();
       if (token == null) throw Exception('Token no encontrado');
       
-      // 🔹 Primero agregar el comentario de cierre a la tabla de comentarios
-      await agregarComentario(ticketId, "🔒 COMENTARIO DE CIERRE: $comentario");
+      // 🔹 Primero agregar el comentario de cierre a la tabla de comentarios (sin enviar correo)
+      await agregarComentarioCierre(ticketId, "🔒 COMENTARIO DE CIERRE: $comentario");
       
-      // 🔹 Luego cerrar el ticket
+      // 🔹 Luego cerrar el ticket (esto enviará el correo de cierre con el comentario incluido)
       final response = await http.put(
         Uri.parse('$baseUrl/tickets/$ticketId/cerrar'),
         headers: {

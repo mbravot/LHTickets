@@ -1084,7 +1084,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
         
         <div class="section">
             <h3>Descripción</h3>
-            <p>${ticket['descripcion'] ?? ''}</p>
+            <div style="white-space: pre-line;">${ticket['descripcion'] ?? ''}</div>
         </div>
         
         <div class="section">
@@ -1092,7 +1092,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
             ${comentariosList.isEmpty ? '<p style="color: #6c757d;">No hay comentarios aún.</p>' : comentariosList.map((comentario) => '''
                 <div class="comment">
                     <div class="comment-header">${comentario['usuario']} - ${comentario['creado']}</div>
-                    <div class="comment-content">${comentario['comentario']}</div>
+                    <div class="comment-content" style="white-space: pre-line;">${comentario['comentario']}</div>
                 </div>
             ''').join('')}
         </div>
