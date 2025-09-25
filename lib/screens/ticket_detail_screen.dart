@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/session_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:html' as html;
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -10,6 +11,7 @@ import 'package:intl/intl.dart';
 class TicketDetailScreen extends StatefulWidget {
   final Map<String, dynamic> ticket;
   final ApiService apiService = ApiService();
+  final SessionService sessionService = SessionService();
 
   TicketDetailScreen({super.key, required this.ticket});
 
@@ -22,6 +24,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
   late Map<String, dynamic> ticket;
   late Future<List<dynamic>> comentarios;
   final TextEditingController _comentarioController = TextEditingController();
+
+  // Información del usuario actual
+  String? currentUserId;
+  String? currentUserRole;
 
   // Animación
   late AnimationController _animationController;
@@ -46,6 +52,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
     super.initState();
     ticket = widget.ticket;
     comentarios = _cargarComentarios();
+    _cargarInformacionUsuario();
 
     // Inicializar animación
     _animationController = AnimationController(
@@ -59,6 +66,42 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
       ),
     );
     _animationController.forward();
+  }
+
+  // 🔹 Cargar información del usuario actual
+  Future<void> _cargarInformacionUsuario() async {
+    try {
+      final sessionData = await widget.sessionService.getSessionData();
+      setState(() {
+        currentUserId = sessionData['user_id']?.toString();
+        currentUserRole = sessionData['user_role']?.toString();
+      });
+    } catch (e) {
+      // Si hay error al cargar la sesión, continuar sin permisos
+      print('Error al cargar información del usuario: $e');
+    }
+  }
+
+  // 🔹 Verificar si el usuario puede editar un comentario
+  bool _puedeEditarComentario(dynamic comentario) {
+    // Los administradores pueden editar cualquier comentario
+    if (currentUserRole == "1") {
+      return true;
+    }
+    
+    // Los usuarios solo pueden editar sus propios comentarios
+    return comentario['id_usuario']?.toString() == currentUserId;
+  }
+
+  // 🔹 Verificar si el usuario puede eliminar un comentario
+  bool _puedeEliminarComentario(dynamic comentario) {
+    // Los administradores pueden eliminar cualquier comentario
+    if (currentUserRole == "1") {
+      return true;
+    }
+    
+    // Los usuarios solo pueden eliminar sus propios comentarios
+    return comentario['id_usuario']?.toString() == currentUserId;
   }
 
   @override
@@ -110,6 +153,139 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
           backgroundColor: Colors.red,
         ),
       );
+    }
+  }
+
+  // 🔹 Editar un comentario existente
+  void _editarComentario(dynamic comentario) async {
+    final TextEditingController editController = TextEditingController(text: comentario['comentario']);
+    
+    final String? nuevoComentario = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.edit, color: primaryColor),
+            SizedBox(width: 8),
+            Text('Editar Comentario'),
+          ],
+        ),
+        content: TextField(
+          controller: editController,
+          decoration: InputDecoration(
+            hintText: 'Edita tu comentario...',
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 4,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancelar'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.grey[600],
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(editController.text),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryColor,
+              foregroundColor: Colors.white,
+            ),
+            child: Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+
+    if (nuevoComentario != null && nuevoComentario.trim().isNotEmpty && nuevoComentario != comentario['comentario']) {
+      try {
+        await widget.apiService.editarComentario(
+          ticket['id'].toString(),
+          comentario['id'].toString(),
+          nuevoComentario.trim(),
+        );
+
+        setState(() {
+          comentarios = _cargarComentarios(); // Recargar comentarios
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Comentario editado correctamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error al editar comentario: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // 🔹 Eliminar un comentario
+  void _eliminarComentario(dynamic comentario) async {
+    final bool confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.delete, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Eliminar Comentario'),
+          ],
+        ),
+        content: Text('¿Estás seguro de que deseas eliminar este comentario? Esta acción no se puede deshacer.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Cancelar'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.grey[600],
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: Text('Eliminar'),
+          ),
+        ],
+      ),
+    ) ?? false;
+
+    if (confirmar) {
+      try {
+        await widget.apiService.eliminarComentario(
+          ticket['id'].toString(),
+          comentario['id'].toString(),
+        );
+
+        setState(() {
+          comentarios = _cargarComentarios(); // Recargar comentarios
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Comentario eliminado correctamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error al eliminar comentario: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -705,6 +881,42 @@ class _TicketDetailScreenState extends State<TicketDetailScreen>
                                               ),
                                             ],
                                           ),
+                                        ),
+                                        // Botones de acción directos para editar y eliminar
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            if (_puedeEditarComentario(comentario))
+                                              IconButton(
+                                                icon: Icon(
+                                                  Icons.edit,
+                                                  color: primaryColor,
+                                                  size: 18,
+                                                ),
+                                                onPressed: () => _editarComentario(comentario),
+                                                tooltip: 'Editar comentario',
+                                                padding: EdgeInsets.all(4),
+                                                constraints: BoxConstraints(
+                                                  minWidth: 32,
+                                                  minHeight: 32,
+                                                ),
+                                              ),
+                                            if (_puedeEliminarComentario(comentario))
+                                              IconButton(
+                                                icon: Icon(
+                                                  Icons.delete,
+                                                  color: Colors.red,
+                                                  size: 18,
+                                                ),
+                                                onPressed: () => _eliminarComentario(comentario),
+                                                tooltip: 'Eliminar comentario',
+                                                padding: EdgeInsets.all(4),
+                                                constraints: BoxConstraints(
+                                                  minWidth: 32,
+                                                  minHeight: 32,
+                                                ),
+                                              ),
+                                          ],
                                         ),
                                       ],
                                     ),

@@ -1372,4 +1372,39 @@ class ApiService {
       throw Exception('Error al obtener todos los tickets: ${response.body}');
     }
   }
+
+  // 🔹 Editar un comentario existente
+  Future<void> editarComentario(String ticketId, String comentarioId, String nuevoComentario) async {
+    final response = await protectedRequest(
+      (token) => http.put(
+        Uri.parse('$baseUrl/tickets/$ticketId/comentarios/$comentarioId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({'comentario': nuevoComentario}),
+      ),
+    );
+    
+    if (response.statusCode != 200) {
+      throw Exception('Error al editar el comentario: ${response.body}');
+    }
+  }
+
+  // 🔹 Eliminar un comentario
+  Future<void> eliminarComentario(String ticketId, String comentarioId) async {
+    final response = await protectedRequest(
+      (token) => http.delete(
+        Uri.parse('$baseUrl/tickets/$ticketId/comentarios/$comentarioId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ),
+    );
+    
+    if (response.statusCode != 200) {
+      throw Exception('Error al eliminar el comentario: ${response.body}');
+    }
+  }
 }
